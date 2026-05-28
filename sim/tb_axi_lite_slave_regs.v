@@ -53,6 +53,33 @@ module tb_axi_lite_slave_regs;
         .regs_flat(regs_flat)
     );
 
+    axi_lite_slave_assertions #(
+        .DATA_WIDTH(DATA_WIDTH),
+        .ADDR_WIDTH(ADDR_WIDTH),
+        .REG_COUNT(REG_COUNT),
+        .MAX_RESP_LATENCY(16)
+    ) axi_assert_i (
+        .aclk(aclk),
+        .aresetn(aresetn),
+        .s_axi_awaddr(s_axi_awaddr),
+        .s_axi_awvalid(s_axi_awvalid),
+        .s_axi_awready(s_axi_awready),
+        .s_axi_wdata(s_axi_wdata),
+        .s_axi_wstrb(s_axi_wstrb),
+        .s_axi_wvalid(s_axi_wvalid),
+        .s_axi_wready(s_axi_wready),
+        .s_axi_bresp(s_axi_bresp),
+        .s_axi_bvalid(s_axi_bvalid),
+        .s_axi_bready(s_axi_bready),
+        .s_axi_araddr(s_axi_araddr),
+        .s_axi_arvalid(s_axi_arvalid),
+        .s_axi_arready(s_axi_arready),
+        .s_axi_rdata(s_axi_rdata),
+        .s_axi_rresp(s_axi_rresp),
+        .s_axi_rvalid(s_axi_rvalid),
+        .s_axi_rready(s_axi_rready)
+    );
+
     initial begin
         aclk = 1'b0;
         forever #5 aclk = ~aclk;

@@ -1,0 +1,7 @@
+work/
+transcript
+*.wlf
+*.vstf
+coverage_*.txt
+covhtmlreport/
+vsim_stacktrace.vstf

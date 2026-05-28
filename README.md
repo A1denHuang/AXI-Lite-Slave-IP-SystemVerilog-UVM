@@ -1,6 +1,66 @@
 # AXI-Lite-Slave-IP-SystemVerilog-UVM
 A parameterized AXI4-Lite Slave Register IP along with a complete verification environment built using SystemVerilog/UVM
 
+## UVM Verification
+
+This project now includes a UVM verification environment for `axi_lite_slave_regs`.
+
+Implemented verification blocks:
+
+- Random/constrained-random tests
+- Functional coverage
+- Scoreboard/reference mirror
+- UVM agent/env/sequences/tests/top
+- Existing assertions are instantiated in both directed and UVM top-level benches
+
+Main UVM tests:
+
+- `axi_lite_smoke_test`
+- `axi_lite_random_test`
+- `axi_lite_wstrb_test`
+- `axi_lite_error_test`
+- `axi_lite_backpressure_test`
+
+Run examples:
+
+```sh
+D:\Questasim\win64\vsim.exe -do sim/run_uvm.do
+```
+
+For a different test:
+
+```sh
+set UVM_TESTNAME=axi_lite_random_test
+D:\Questasim\win64\vsim.exe -do sim/run_uvm.do
+```
+
+For random test length:
+
+```sh
+D:\Questasim\win64\vsim.exe -c -nodpiexports -coverage top_tb +UVM_TESTNAME=axi_lite_random_test +NUM_TXNS=1000 -do "run -all; quit -f"
+```
+
+The directed smoke bench is still available:
+
+```sh
+D:\Questasim\win64\vsim.exe -do sim/run_directed.do
+```
+
+Note: Intel FPGA ModelSim ASE can compile this UVM environment, but it may not
+run randomized classes and covergroups because those require a full QuestaSim
+verification license.
+
+## Assertions
+
+- `UVM/assertions.sv`: AXI4-Lite interface-level SystemVerilog assertions.
+- `UVM/assertions_protocol说明.md`: 中文协议说明，解释每个 assertion 检查的协议点。
+
+Questa/ModelSim 编译示例：
+
+```sh
+vlog -sv rtl/axi_lite_slave_regs.v UVM/assertions.sv sim/tb_axi_lite_slave_regs.v
+```
+
 ## 1. 项目整体架构
 
 该项目提供了一套**参数化、可复用的 AXI4-Lite Slave Register IP**，用于快速为 SoC/ASIC 项目生成寄存器映射接口。主要包含两个核心模块：
@@ -38,7 +98,7 @@ A parameterized AXI4-Lite Slave Register IP along with a complete verification e
 
 #### **(2) axi_lite_slave_project_regs.v** —— 项目专用寄存器 IP
 
-这是一个**具体项目**的寄存器映射示例，展示了如何基于通用模板定制特殊寄存器行为。
+这是一个**具体项目**的寄存器映射示例，展示了如何**基于通用模板定制特殊寄存器行为**。
 
 **寄存器映射（偏移地址）：**
 
