@@ -1,0 +1,81 @@
+Reading D:/Questasim/tcl/vsim/pref.tcl
+
+# 10.7c
+
+# vsim -c -nodpiexports -coverage -onfinish stop -sv_seed 1028 top_tb "+UVM_TESTNAME=axi_lite_wstrb_test" "+NUM_TXNS=500" "+UVM_NO_RELNOTES" -do "run -all; coverage save {results/axi_lite_wstrb_test_seed_1028.ucdb}; quit -f" 
+# Start time: 12:56:38 on Oct 08,2026
+# ** Note: (vsim-8009) Loading existing optimized design _opt
+# //  Questa Sim-64
+# //  Version 10.7c win64 Aug 18 2018
+# //
+# //  Copyright 1991-2018 Mentor Graphics Corporation
+# //  All Rights Reserved.
+# //
+# //  QuestaSim and its associated documentation contain trade
+# //  secrets and commercial or financial information that are the property of
+# //  Mentor Graphics Corporation and are privileged, confidential,
+# //  and exempt from disclosure under the Freedom of Information Act,
+# //  5 U.S.C. Section 552. Furthermore, this information
+# //  is prohibited from disclosure under the Trade Secrets Act,
+# //  18 U.S.C. Section 1905.
+# //
+# Loading sv_std.std
+# Loading work.axi_lite_if(fast)
+# Loading work.uvm_pkg(fast)
+# Loading work.axi_lite_pkg(fast)
+# ** Note: (vsim-8785) UVM-aware debugging capabilities will be disabled since no compiled "questa_uvm_pkg" can be found.
+# This also means that later if you turn on UVM-aware debugging your debug simulations may have
+# different random seeds from your non-debug simulations.
+# Loading work.top_tb(fast)
+# run -all
+# UVM_INFO D:/Questasim/verilog_src/uvm-1.2/src/base/uvm_root.svh(392) @ 0: reporter [UVM/RELNOTES] 
+# ----------------------------------------------------------------
+# UVM-1.2
+# (C) 2007-2014 Mentor Graphics Corporation
+# (C) 2007-2014 Cadence Design Systems, Inc.
+# (C) 2006-2014 Synopsys, Inc.
+# (C) 2011-2013 Cypress Semiconductor Corp.
+# (C) 2013-2014 NVIDIA Corporation
+# ----------------------------------------------------------------
+# 
+#   ***********       IMPORTANT RELEASE NOTES         ************
+# 
+#   You are using a version of the UVM library that has been compiled
+#   with `UVM_NO_DEPRECATED undefined.
+#   See http://www.eda.org/svdb/view.php?id=3313 for more details.
+# 
+#   You are using a version of the UVM library that has been compiled
+#   with `UVM_OBJECT_DO_NOT_NEED_CONSTRUCTOR undefined.
+#   See http://www.eda.org/svdb/view.php?id=3770 for more details.
+# 
+#       (Specify +UVM_NO_RELNOTES to turn off this notice)
+# 
+# UVM_INFO D:/Questasim/verilog_src/uvm-1.2/src/base/uvm_root.svh(453) @ 0: reporter [NO_DPI_TSTNAME] UVM_NO_DPI defined--getting UVM_TESTNAME directly, without DPI
+# UVM_INFO @ 0: reporter [RNTST] Running test axi_lite_wstrb_test...
+# UVM_INFO D:/Questasim/verilog_src/uvm-1.2/src/base/uvm_traversal.svh(279) @ 0: reporter [UVM/COMP/NAMECHECK] This implementation of the component name checks requires DPI to be enabled
+# UVM_INFO D:/Questasim/verilog_src/uvm-1.2/src/base/uvm_objection.svh(1270) @ 1205000: reporter [TEST_DONE] 'run' phase is ready to proceed to the 'extract' phase
+# UVM_INFO UVM/env/axi_lite_coverage.sv(71) @ 1205000: uvm_test_top.env.coverage [COV] AXI-Lite functional coverage: 41.32%
+# UVM_INFO D:/Questasim/verilog_src/uvm-1.2/src/base/uvm_report_server.svh(847) @ 1205000: reporter [UVM/REPORT/SERVER] 
+# --- UVM Report Summary ---
+# 
+# ** Report counts by severity
+# UVM_INFO :    6
+# UVM_WARNING :    0
+# UVM_ERROR :    0
+# UVM_FATAL :    0
+# ** Report counts by id
+# [COV]     1
+# [NO_DPI_TSTNAME]     1
+# [RNTST]     1
+# [TEST_DONE]     1
+# [UVM/COMP/NAMECHECK]     1
+# [UVM/RELNOTES]     1
+# 
+# ** Note: $finish    : D:/Questasim/verilog_src/uvm-1.2/src/base/uvm_root.svh(517)
+#    Time: 1205 ns  Iteration: 69  Instance: /top_tb
+# Break in Task uvm_pkg/uvm_root::run_test at D:/Questasim/verilog_src/uvm-1.2/src/base/uvm_root.svh line 517
+# Stopped at D:/Questasim/verilog_src/uvm-1.2/src/base/uvm_root.svh line 517
+#  coverage save {results/axi_lite_wstrb_test_seed_1028.ucdb}
+#  quit -f
+# End time: 12:56:40 on Oct 08,2026, Elapsed time: 0:00:02
+# Errors: 0, Warnings: 0

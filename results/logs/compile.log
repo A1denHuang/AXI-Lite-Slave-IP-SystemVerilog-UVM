@@ -1,0 +1,46 @@
+Reading D:/Questasim/tcl/vsim/pref.tcl
+
+# 10.7c
+
+# do sim/compile_coverage.do
+# 
+# set UVM_HOME "D:/Questasim/verilog_src/uvm-1.2"
+# D:/Questasim/verilog_src/uvm-1.2
+# 
+# if {[file exists work]} {
+#     vdel -lib work -all
+# }
+# vlib work
+# vmap work work
+# QuestaSim-64 vmap 10.7c Lib Mapping Utility 2018.08 Aug 18 2018
+# vmap work work 
+# Modifying modelsim.ini
+# 
+# vlog -sv +cover=bcesft +define+UVM_NO_DPI +incdir+$UVM_HOME/src +incdir+UVM \
+#     $UVM_HOME/src/uvm_pkg.sv \
+#     UVM/axi_lite_if.sv \
+#     UVM/axi_lite_pkg.sv \
+#     rtl/axi_lite_slave_regs.v \
+#     rtl/axi_lite_slave_project_regs.v \
+#     UVM/assertions.sv \
+#     UVM/top_tb_uvm.sv
+# QuestaSim-64 vlog 10.7c Compiler 2018.08 Aug 18 2018
+# Start time: 12:55:10 on Oct 08,2026
+# vlog -sv "+cover=bcesft" "+define+UVM_NO_DPI" "+incdir+D:/Questasim/verilog_src/uvm-1.2/src" "+incdir+UVM" D:/Questasim/verilog_src/uvm-1.2/src/uvm_pkg.sv UVM/axi_lite_if.sv UVM/axi_lite_pkg.sv rtl/axi_lite_slave_regs.v rtl/axi_lite_slave_project_regs.v UVM/assertions.sv UVM/top_tb_uvm.sv 
+# -- Compiling package uvm_pkg (uvm-1.2 Built-in)
+# -- Compiling interface axi_lite_if
+# -- Compiling package axi_lite_pkg
+# -- Importing package uvm_pkg (uvm-1.2 Built-in)
+# -- Compiling module axi_lite_slave_regs
+# -- Compiling module axi_lite_slave_project_regs
+# -- Compiling module axi_lite_slave_assertions
+# -- Compiling module top_tb
+# -- Importing package axi_lite_pkg
+# 
+# Top level modules:
+# 	axi_lite_slave_project_regs
+# 	top_tb
+# End time: 12:55:10 on Oct 08,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0
+# 
+# quit -f

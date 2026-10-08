@@ -1,0 +1,1548 @@
+Coverage Report by file with details
+
+=================================================================================
+=== File: UVM/assertions.sv
+=================================================================================
+Statement Coverage:
+    Enabled Coverage            Active      Hits    Misses % Covered
+    ----------------            ------      ----    ------ ---------
+    Stmts                           29        26         3     89.65
+
+================================Statement Details================================
+
+Statement Coverage for file UVM/assertions.sv --
+
+    1                                                `ifndef AXI_LITE_ASSERTIONS_SV
+    2                                                `define AXI_LITE_ASSERTIONS_SV
+    3                                                
+    4                                                // AXI4-Lite interface assertions for axi_lite_slave_regs.
+    5                                                //
+    6                                                // The checker is intentionally interface-level: it observes only AXI signals,
+    7                                                // so it can be instantiated in a testbench or bound to the DUT without using
+    8                                                // internal implementation signals.
+    9                                                
+    10                                               module axi_lite_slave_assertions #(
+    11                                                   parameter int DATA_WIDTH = 32,
+    12                                                   parameter int ADDR_WIDTH = 8,
+    13                                                   parameter int REG_COUNT  = 8,
+    14                                                   parameter int MAX_RESP_LATENCY = 16
+    15                                               ) (
+    16                                                   input  logic                     aclk,
+    17                                                   input  logic                     aresetn,
+    18                                               
+    19                                                   input  logic [ADDR_WIDTH-1:0]    s_axi_awaddr,
+    20                                                   input  logic                     s_axi_awvalid,
+    21                                                   input  logic                     s_axi_awready,
+    22                                               
+    23                                                   input  logic [DATA_WIDTH-1:0]    s_axi_wdata,
+    24                                                   input  logic [DATA_WIDTH/8-1:0]  s_axi_wstrb,
+    25                                                   input  logic                     s_axi_wvalid,
+    26                                                   input  logic                     s_axi_wready,
+    27                                               
+    28                                                   input  logic [1:0]               s_axi_bresp,
+    29                                                   input  logic                     s_axi_bvalid,
+    30                                                   input  logic                     s_axi_bready,
+    31                                               
+    32                                                   input  logic [ADDR_WIDTH-1:0]    s_axi_araddr,
+    33                                                   input  logic                     s_axi_arvalid,
+    34                                                   input  logic                     s_axi_arready,
+    35                                               
+    36                                                   input  logic [DATA_WIDTH-1:0]    s_axi_rdata,
+    37                                                   input  logic [1:0]               s_axi_rresp,
+    38                                                   input  logic                     s_axi_rvalid,
+    39                                                   input  logic                     s_axi_rready
+    40                                               );
+    41                                               
+    42                                                   localparam int STRB_WIDTH = DATA_WIDTH / 8;
+    43                                                   localparam int ADDR_LSB   = $clog2(STRB_WIDTH);
+    44                                                   localparam logic [1:0] RESP_OKAY   = 2'b00;
+    45                                                   localparam logic [1:0] RESP_SLVERR = 2'b10;
+    46                                               
+    47                                                   logic [ADDR_WIDTH-1:0] awaddr_q;
+    48                                                   logic                  aw_seen_q;
+    49                                                   logic                  w_seen_q;
+    50                                                   logic                  write_pending_q;
+    51                                                   logic                  read_pending_q;
+    52                                               
+    53              1                         27         wire aw_hs = s_axi_awvalid && s_axi_awready;
+    54              1                         27         wire w_hs  = s_axi_wvalid  && s_axi_wready;
+    55              1                         27         wire b_hs  = s_axi_bvalid  && s_axi_bready;
+    56              1                         23         wire ar_hs = s_axi_arvalid && s_axi_arready;
+    57              1                         29         wire r_hs  = s_axi_rvalid  && s_axi_rready;
+    58                                               
+    59              1                          7         wire [ADDR_WIDTH-1:0] write_addr = aw_seen_q ? awaddr_q : s_axi_awaddr;
+    60              1                          6         wire write_addr_aligned = write_addr[ADDR_LSB-1:0] == '0;
+    61              1                          7         wire read_addr_aligned  = s_axi_araddr[ADDR_LSB-1:0] == '0;
+    62              1                          6         wire [ADDR_WIDTH-ADDR_LSB-1:0] write_word_addr = write_addr[ADDR_WIDTH-1:ADDR_LSB];
+    63              1                          7         wire [ADDR_WIDTH-ADDR_LSB-1:0] read_word_addr  = s_axi_araddr[ADDR_WIDTH-1:ADDR_LSB];
+    64              1                          6         wire write_addr_valid = write_addr_aligned && (write_word_addr < REG_COUNT);
+    65              1                          7         wire read_addr_valid  = read_addr_aligned  && (read_word_addr  < REG_COUNT);
+    66                                               
+    67              1                         15         wire write_complete = (aw_seen_q || aw_hs) && (w_seen_q || w_hs);
+    68                                               
+    69              1                         41         always_ff @(posedge aclk) begin
+    70                                                       if (!aresetn) begin
+    71              1                          2                 awaddr_q        <= '0;
+    72              1                          2                 aw_seen_q       <= 1'b0;
+    73              1                          2                 w_seen_q        <= 1'b0;
+    74              1                          2                 write_pending_q <= 1'b0;
+    75              1                          2                 read_pending_q  <= 1'b0;
+    76                                                       end else begin
+    77                                                           if (aw_hs && !write_complete) begin
+    78              1                    ***0***                     awaddr_q  <= s_axi_awaddr;
+    79              1                    ***0***                     aw_seen_q <= 1'b1;
+    80                                                           end
+    81                                               
+    82                                                           if (w_hs && !write_complete) begin
+    83              1                    ***0***                     w_seen_q <= 1'b1;
+    84                                                           end
+    85                                               
+    86                                                           if (write_complete) begin
+    87              1                          6                     aw_seen_q       <= 1'b0;
+    88              1                          6                     w_seen_q        <= 1'b0;
+    89              1                          6                     write_pending_q <= 1'b1;
+    90                                                           end else if (b_hs) begin
+    91              1                          6                     write_pending_q <= 1'b0;
+    92                                                           end
+    93                                               
+    94                                                           if (ar_hs) begin
+    95              1                          7                     read_pending_q <= 1'b1;
+    96                                                           end else if (r_hs) begin
+    97              1                          7                     read_pending_q <= 1'b0;
+    98                                                           end
+    99                                                       end
+    100                                                  end
+    101                                              
+    102             1                          1         default clocking cb @(posedge aclk);
+    103                                                  endclocking
+    104                                              
+    105                                                  // -------------------------
+    106                                                  // Global/reset/X checking
+    107                                                  // -------------------------
+    108                                              
+    109                                                  a_reset_clears_responses:
+    110                                                      assert property (!aresetn |=> (!s_axi_bvalid && !s_axi_rvalid))
+    111                                                      else $error("AXI-Lite reset protocol violation: BVALID/RVALID must be low in reset");
+    112                                              
+    113                                                  a_no_unknown_control:
+    114                                                      assert property (disable iff (!aresetn)
+    115                                                          !$isunknown({
+    116                                                              s_axi_awvalid, s_axi_awready,
+    117                                                              s_axi_wvalid,  s_axi_wready,
+    118                                                              s_axi_bvalid,  s_axi_bready,
+    119                                                              s_axi_arvalid, s_axi_arready,
+    120                                                              s_axi_rvalid,  s_axi_rready
+    121                                                          }))
+    122                                                      else $error("AXI-Lite protocol violation: VALID/READY contains X/Z");
+    123                                              
+    124                                                  // -------------------------
+    125                                                  // Write address channel
+    126                                                  // -------------------------
+    127                                              
+    128                                                  a_awaddr_stable_until_handshake:
+    129                                                      assert property (disable iff (!aresetn)
+    130                                                          s_axi_awvalid && !s_axi_awready |=> s_axi_awvalid && $stable(s_axi_awaddr))
+    131                                                      else $error("AXI-Lite AW protocol violation: AWADDR/AWVALID changed before AW handshake");
+    132                                              
+    133                                                  a_no_second_aw_before_write_response:
+    134                                                      assert property (disable iff (!aresetn)
+    135                                                          aw_seen_q |-> !aw_hs)
+    136                                                      else $error("AXI-Lite AW protocol violation: second AW accepted before previous write address was consumed");
+    137                                              
+    138                                                  // -------------------------
+    139                                                  // Write data channel
+    140                                                  // -------------------------
+    141                                              
+    142                                                  a_wdata_stable_until_handshake:
+    143                                                      assert property (disable iff (!aresetn)
+    144                                                          s_axi_wvalid && !s_axi_wready |=>
+    145                                                              s_axi_wvalid && $stable(s_axi_wdata) && $stable(s_axi_wstrb))
+    146                                                      else $error("AXI-Lite W protocol violation: WDATA/WSTRB/WVALID changed before W handshake");
+    147                                              
+    148                                                  a_no_second_w_before_write_response:
+    149                                                      assert property (disable iff (!aresetn)
+    150                                                          w_seen_q |-> !w_hs)
+    151                                                      else $error("AXI-Lite W protocol violation: second W accepted before previous write data was consumed");
+    152                                              
+    153                                                  // -------------------------
+    154                                                  // Write response channel
+    155                                                  // -------------------------
+    156                                              
+    157                                                  a_bvalid_only_after_aw_and_w:
+    158                                                      assert property (disable iff (!aresetn)
+    159                                                          $rose(s_axi_bvalid) |-> $past(write_pending_q || write_complete))
+    160                                                      else $error("AXI-Lite B protocol violation: BVALID rose before both AW and W handshakes completed");
+    161                                              
+    162                                                  a_bresp_stable_until_handshake:
+    163                                                      assert property (disable iff (!aresetn)
+    164                                                          s_axi_bvalid && !s_axi_bready |=> s_axi_bvalid && $stable(s_axi_bresp))
+    165                                                      else $error("AXI-Lite B protocol violation: BRESP/BVALID changed before B handshake");
+    166                                              
+    167                                                  a_bresp_legal_value:
+    168                                                      assert property (disable iff (!aresetn)
+    169                                                          s_axi_bvalid |-> (s_axi_bresp inside {RESP_OKAY, RESP_SLVERR}))
+    170                                                      else $error("AXI-Lite B protocol violation: BRESP must be OKAY or SLVERR");
+    171                                              
+    172                                                  a_write_response_latency:
+    173                                                      assert property (disable iff (!aresetn)
+    174                                                          write_complete |-> ##[0:MAX_RESP_LATENCY] s_axi_bvalid)
+    175                                                      else $error("AXI-Lite B protocol violation: write response latency exceeded MAX_RESP_LATENCY");
+    176                                              
+    177                                                  a_invalid_write_gets_slverr:
+    178                                                      assert property (disable iff (!aresetn)
+    179                                                          write_complete && !write_addr_valid |-> ##[0:MAX_RESP_LATENCY]
+    180                                                              (s_axi_bvalid && s_axi_bresp == RESP_SLVERR))
+    181                                                      else $error("AXI-Lite address protocol violation: invalid write did not return SLVERR");
+    182                                              
+    183                                                  // -------------------------
+    184                                                  // Read address channel
+    185                                                  // -------------------------
+    186                                              
+    187                                                  a_araddr_stable_until_handshake:
+    188                                                      assert property (disable iff (!aresetn)
+    189                                                          s_axi_arvalid && !s_axi_arready |=> s_axi_arvalid && $stable(s_axi_araddr))
+    190                                                      else $error("AXI-Lite AR protocol violation: ARADDR/ARVALID changed before AR handshake");
+    191                                              
+    192                                                  a_no_second_ar_before_read_response:
+    193                                                      assert property (disable iff (!aresetn)
+    194                                                          read_pending_q |-> !ar_hs)
+    195                                                      else $error("AXI-Lite AR protocol violation: second AR accepted before previous read response completed");
+    196                                              
+    197                                                  // -------------------------
+    198                                                  // Read response channel
+    199                                                  // -------------------------
+    200                                              
+    201                                                  a_rvalid_only_after_ar:
+    202                                                      assert property (disable iff (!aresetn)
+    203                                                          $rose(s_axi_rvalid) |-> $past(read_pending_q || ar_hs))
+    204                                                      else $error("AXI-Lite R protocol violation: RVALID rose before AR handshake completed");
+    205                                              
+    206                                                  a_rdata_stable_until_handshake:
+    207                                                      assert property (disable iff (!aresetn)
+    208                                                          s_axi_rvalid && !s_axi_rready |=>
+    209                                                              s_axi_rvalid && $stable(s_axi_rdata) && $stable(s_axi_rresp))
+    210                                                      else $error("AXI-Lite R protocol violation: RDATA/RRESP/RVALID changed before R handshake");
+    211                                              
+    212                                                  a_rresp_legal_value:
+    213                                                      assert property (disable iff (!aresetn)
+    214                                                          s_axi_rvalid |-> (s_axi_rresp inside {RESP_OKAY, RESP_SLVERR}))
+    215                                                      else $error("AXI-Lite R protocol violation: RRESP must be OKAY or SLVERR");
+    216                                              
+    217                                                  a_read_response_latency:
+    218                                                      assert property (disable iff (!aresetn)
+    219                                                          ar_hs |-> ##[0:MAX_RESP_LATENCY] s_axi_rvalid)
+    220                                                      else $error("AXI-Lite R protocol violation: read response latency exceeded MAX_RESP_LATENCY");
+    221                                              
+    222                                                  a_invalid_read_gets_slverr:
+    223                                                      assert property (disable iff (!aresetn)
+    224                                                          ar_hs && !read_addr_valid |-> ##[0:MAX_RESP_LATENCY]
+    225                                                              (s_axi_rvalid && s_axi_rresp == RESP_SLVERR))
+    226                                                      else $error("AXI-Lite address protocol violation: invalid read did not return SLVERR");
+    227                                              
+    228                                              endmodule
+    229                                              
+    230                                              `endif
+
+Branch Coverage:
+    Enabled Coverage            Active      Hits    Misses % Covered
+    ----------------            ------      ----    ------ ---------
+    Branches                        14        11         3     78.57
+
+================================Branch Details================================
+
+Branch Coverage for file UVM/assertions.sv --
+
+------------------------------------IF Branch------------------------------------
+    59                                         5     Count coming in to IF
+    59              1                    ***0***         wire [ADDR_WIDTH-1:0] write_addr = aw_seen_q ? awaddr_q : s_axi_awaddr;
+    59              2                          5         wire [ADDR_WIDTH-1:0] write_addr = aw_seen_q ? awaddr_q : s_axi_awaddr;
+Branch totals: 1 hit of 2 branches = 50.00%
+
+------------------------------------IF Branch------------------------------------
+    70                                        41     Count coming in to IF
+    70              1                          2             if (!aresetn) begin
+    76              1                         39             end else begin
+Branch totals: 2 hits of 2 branches = 100.00%
+
+------------------------------------IF Branch------------------------------------
+    77                                        39     Count coming in to IF
+    77              1                    ***0***                 if (aw_hs && !write_complete) begin
+                                              39     All False Count
+Branch totals: 1 hit of 2 branches = 50.00%
+
+------------------------------------IF Branch------------------------------------
+    82                                        39     Count coming in to IF
+    82              1                    ***0***                 if (w_hs && !write_complete) begin
+                                              39     All False Count
+Branch totals: 1 hit of 2 branches = 50.00%
+
+------------------------------------IF Branch------------------------------------
+    86                                        39     Count coming in to IF
+    86              1                          6                 if (write_complete) begin
+    90              1                          6                 end else if (b_hs) begin
+                                              27     All False Count
+Branch totals: 3 hits of 3 branches = 100.00%
+
+------------------------------------IF Branch------------------------------------
+    94                                        39     Count coming in to IF
+    94              1                          7                 if (ar_hs) begin
+    96              1                          7                 end else if (r_hs) begin
+                                              25     All False Count
+Branch totals: 3 hits of 3 branches = 100.00%
+
+
+Condition Coverage:
+    Enabled Coverage            Active   Covered    Misses % Covered
+    ----------------            ------      ----    ------ ---------
+    FEC Condition Terms              4         0         4      0.00
+
+================================Condition Details================================
+
+Condition Coverage for file UVM/assertions.sv --
+
+----------------Focused Condition View-------------------
+Line       77 Item    1  (aw_hs && ~write_complete)
+Condition totals: 0 of 2 input terms covered = 0.00%
+
+      Input Term   Covered  Reason for no coverage   Hint
+     -----------  --------  -----------------------  --------------
+           aw_hs         N  '_1' not hit             Hit '_1'
+  write_complete         N  '_0' not hit             Hit '_0'
+
+     Rows:       Hits  FEC Target            Non-masking condition(s)      
+ ---------  ---------  --------------------  -------------------------     
+  Row   1:          1  aw_hs_0               -                             
+  Row   2:    ***0***  aw_hs_1               ~write_complete               
+  Row   3:    ***0***  write_complete_0      aw_hs                         
+  Row   4:          1  write_complete_1      aw_hs                         
+
+----------------Focused Condition View-------------------
+Line       82 Item    1  (w_hs && ~write_complete)
+Condition totals: 0 of 2 input terms covered = 0.00%
+
+      Input Term   Covered  Reason for no coverage   Hint
+     -----------  --------  -----------------------  --------------
+            w_hs         N  '_1' not hit             Hit '_1'
+  write_complete         N  '_0' not hit             Hit '_0'
+
+     Rows:       Hits  FEC Target            Non-masking condition(s)      
+ ---------  ---------  --------------------  -------------------------     
+  Row   1:          1  w_hs_0                -                             
+  Row   2:    ***0***  w_hs_1                ~write_complete               
+  Row   3:    ***0***  write_complete_0      w_hs                          
+  Row   4:          1  write_complete_1      w_hs                          
+
+
+Expression Coverage:
+    Enabled Coverage            Active   Covered    Misses % Covered
+    ----------------            ------      ----    ------ ---------
+    FEC Expression Terms            18        12         6     66.66
+
+================================Expression Details================================
+
+Expression Coverage for file UVM/assertions.sv --
+
+----------------Focused Expression View-----------------
+Line       53 Item    1  (s_axi_awvalid && s_axi_awready)
+Expression totals: 1 of 2 input terms covered = 50.00%
+
+     Input Term   Covered  Reason for no coverage   Hint
+    -----------  --------  -----------------------  --------------
+  s_axi_awvalid         Y
+  s_axi_awready         N  '_0' not hit             Hit '_0'
+
+     Rows:       Hits  FEC Target            Non-masking condition(s)      
+ ---------  ---------  --------------------  -------------------------     
+  Row   1:          1  s_axi_awvalid_0       -                             
+  Row   2:          1  s_axi_awvalid_1       s_axi_awready                 
+  Row   3:    ***0***  s_axi_awready_0       s_axi_awvalid                 
+  Row   4:          1  s_axi_awready_1       s_axi_awvalid                 
+
+----------------Focused Expression View-----------------
+Line       54 Item    1  (s_axi_wvalid && s_axi_wready)
+Expression totals: 1 of 2 input terms covered = 50.00%
+
+    Input Term   Covered  Reason for no coverage   Hint
+   -----------  --------  -----------------------  --------------
+  s_axi_wvalid         Y
+  s_axi_wready         N  '_0' not hit             Hit '_0'
+
+     Rows:       Hits  FEC Target            Non-masking condition(s)      
+ ---------  ---------  --------------------  -------------------------     
+  Row   1:          1  s_axi_wvalid_0        -                             
+  Row   2:          1  s_axi_wvalid_1        s_axi_wready                  
+  Row   3:    ***0***  s_axi_wready_0        s_axi_wvalid                  
+  Row   4:          1  s_axi_wready_1        s_axi_wvalid                  
+
+----------------Focused Expression View-----------------
+Line       55 Item    1  (s_axi_bvalid && s_axi_bready)
+Expression totals: 2 of 2 input terms covered = 100.00%
+
+----------------Focused Expression View-----------------
+Line       56 Item    1  (s_axi_arvalid && s_axi_arready)
+Expression totals: 1 of 2 input terms covered = 50.00%
+
+     Input Term   Covered  Reason for no coverage   Hint
+    -----------  --------  -----------------------  --------------
+  s_axi_arvalid         Y
+  s_axi_arready         N  '_0' not hit             Hit '_0'
+
+     Rows:       Hits  FEC Target            Non-masking condition(s)      
+ ---------  ---------  --------------------  -------------------------     
+  Row   1:          1  s_axi_arvalid_0       -                             
+  Row   2:          1  s_axi_arvalid_1       s_axi_arready                 
+  Row   3:    ***0***  s_axi_arready_0       s_axi_arvalid                 
+  Row   4:          1  s_axi_arready_1       s_axi_arvalid                 
+
+----------------Focused Expression View-----------------
+Line       57 Item    1  (s_axi_rvalid && s_axi_rready)
+Expression totals: 2 of 2 input terms covered = 100.00%
+
+----------------Focused Expression View-----------------
+Line       64 Item    1  (write_addr_aligned && (write_word_addr < 4))
+Expression totals: 2 of 2 input terms covered = 100.00%
+
+----------------Focused Expression View-----------------
+Line       65 Item    1  (read_addr_aligned && (read_word_addr < 4))
+Expression totals: 2 of 2 input terms covered = 100.00%
+
+----------------Focused Expression View-----------------
+Line       67 Item    1  ((aw_seen_q || aw_hs) && (w_seen_q || w_hs))
+Expression totals: 1 of 4 input terms covered = 25.00%
+
+  Input Term   Covered  Reason for no coverage   Hint
+ -----------  --------  -----------------------  --------------
+   aw_seen_q         N  '_1' not hit             Hit '_1'
+       aw_hs         Y
+    w_seen_q         N  No hits                  Hit '_0' and '_1'
+        w_hs         N  '_0' not hit             Hit '_0'
+
+     Rows:       Hits  FEC Target            Non-masking condition(s)      
+ ---------  ---------  --------------------  -------------------------     
+  Row   1:          1  aw_seen_q_0           ~aw_hs                        
+  Row   2:    ***0***  aw_seen_q_1           (w_seen_q || w_hs)            
+  Row   3:          1  aw_hs_0               ~aw_seen_q                    
+  Row   4:          1  aw_hs_1               ((w_seen_q || w_hs) && ~aw_seen_q)
+  Row   5:    ***0***  w_seen_q_0            ((aw_seen_q || aw_hs) && ~w_hs)
+  Row   6:    ***0***  w_seen_q_1            (aw_seen_q || aw_hs)          
+  Row   7:    ***0***  w_hs_0                ((aw_seen_q || aw_hs) && ~w_seen_q)
+  Row   8:          1  w_hs_1                ((aw_seen_q || aw_hs) && ~w_seen_q)
+
+
+Toggle Coverage:
+    Enabled Coverage            Active      Hits    Misses % Covered
+    ----------------            ------      ----    ------ ---------
+    Toggle Bins                     84        39        45     46.42
+
+================================Toggle Details================================
+
+Toggle Coverage for File UVM/assertions.sv --
+
+       Line                                   Node      1H->0L      0L->1H  "Coverage"
+--------------------------------------------------------------------------------------
+         47                            awaddr_q[7]           0           0        0.00 
+         47                            awaddr_q[6]           0           0        0.00 
+         47                            awaddr_q[5]           0           0        0.00 
+         47                            awaddr_q[4]           0           0        0.00 
+         47                            awaddr_q[3]           0           0        0.00 
+         47                            awaddr_q[2]           0           0        0.00 
+         47                            awaddr_q[1]           0           0        0.00 
+         47                            awaddr_q[0]           0           0        0.00 
+         48                              aw_seen_q           0           0        0.00 
+         49                               w_seen_q           0           0        0.00 
+         59                          write_addr[7]           0           0        0.00 
+         59                          write_addr[6]           0           0        0.00 
+         59                          write_addr[4]           0           0        0.00 
+         59                          write_addr[1]           0           0        0.00 
+         59                          write_addr[0]           0           1       50.00 
+         60                     write_addr_aligned           1           0       50.00 
+         61                      read_addr_aligned           1           0       50.00 
+         62                     write_word_addr[5]           0           0        0.00 
+         62                     write_word_addr[4]           0           0        0.00 
+         62                     write_word_addr[2]           0           0        0.00 
+         63                      read_word_addr[5]           0           0        0.00 
+         63                      read_word_addr[4]           0           0        0.00 
+         63                      read_word_addr[2]           0           0        0.00 
+         64                       write_addr_valid           1           0       50.00 
+         65                        read_addr_valid           1           0       50.00 
+
+Total Node Count     =         42 
+Toggled Node Count   =         17 
+Untoggled Node Count =         25 
+
+Toggle Coverage      =      46.42% (39 of 84 bins)
+
+=================================================================================
+=== File: rtl/axi_lite_slave_regs.v
+=================================================================================
+Statement Coverage:
+    Enabled Coverage            Active      Hits    Misses % Covered
+    ----------------            ------      ----    ------ ---------
+    Stmts                           55        46         9     83.63
+
+================================Statement Details================================
+
+Statement Coverage for file rtl/axi_lite_slave_regs.v --
+
+    1                                                `timescale 1ns/1ps
+    2                                                
+    3                                                module axi_lite_slave_regs #(
+    4                                                    parameter integer DATA_WIDTH = 32,
+    5                                                    parameter integer ADDR_WIDTH = 8,
+    6                                                    parameter integer REG_COUNT  = 8
+    7                                                ) (
+    8                                                    input  wire                     aclk,
+    9                                                    input  wire                     aresetn,
+    10                                               
+    11                                                   input  wire [ADDR_WIDTH-1:0]    s_axi_awaddr,
+    12                                                   input  wire                     s_axi_awvalid,
+    13                                                   output wire                     s_axi_awready,
+    14                                               
+    15                                                   input  wire [DATA_WIDTH-1:0]    s_axi_wdata,
+    16                                                   input  wire [DATA_WIDTH/8-1:0]  s_axi_wstrb,
+    17                                                   input  wire                     s_axi_wvalid,
+    18                                                   output wire                     s_axi_wready,
+    19                                               
+    20                                                   output reg  [1:0]               s_axi_bresp,
+    21                                                   output reg                      s_axi_bvalid,
+    22                                                   input  wire                     s_axi_bready,
+    23                                               
+    24                                                   input  wire [ADDR_WIDTH-1:0]    s_axi_araddr,
+    25                                                   input  wire                     s_axi_arvalid,
+    26                                                   output wire                     s_axi_arready,
+    27                                               
+    28                                                   output reg  [DATA_WIDTH-1:0]    s_axi_rdata,
+    29                                                   output reg  [1:0]               s_axi_rresp,
+    30                                                   output reg                      s_axi_rvalid,
+    31                                                   input  wire                     s_axi_rready,
+    32                                               
+    33                                                   output wire [REG_COUNT*DATA_WIDTH-1:0] regs_flat
+    34                                               );
+    35                                               
+    36                                                   localparam integer STRB_WIDTH = DATA_WIDTH / 8;
+    37                                                   localparam integer ADDR_LSB   = clog2(STRB_WIDTH);
+    38                                                   localparam [1:0]   RESP_OKAY  = 2'b00;
+    39                                                   localparam [1:0]   RESP_SLVERR = 2'b10;
+    40                                               
+    41                                                   reg [DATA_WIDTH-1:0] regs [0:REG_COUNT-1];
+    42                                                   reg [ADDR_WIDTH-1:0] awaddr_hold;
+    43                                                   reg                  awaddr_valid;
+    44                                                   reg [DATA_WIDTH-1:0] wdata_hold;
+    45                                                   reg [STRB_WIDTH-1:0] wstrb_hold;
+    46                                                   reg                  wdata_valid;
+    47                                               
+    48              1                         27         wire aw_accept = s_axi_awready && s_axi_awvalid;
+    49              1                         27         wire w_accept  = s_axi_wready && s_axi_wvalid;
+    50              1                         27         wire write_fire = !s_axi_bvalid &&
+    51                                                                     (awaddr_valid || aw_accept) &&
+    52                                                                     (wdata_valid  || w_accept);
+    53              1                         23         wire read_fire  = s_axi_arready && s_axi_arvalid;
+    54                                               
+    55              1                          7         wire [ADDR_WIDTH-1:0] write_addr = awaddr_valid ? awaddr_hold : s_axi_awaddr;
+    56              1                          9         wire [DATA_WIDTH-1:0] write_data = wdata_valid ? wdata_hold : s_axi_wdata;
+    57              1                          6         wire [STRB_WIDTH-1:0] write_strb = wdata_valid ? wstrb_hold : s_axi_wstrb;
+    58                                               
+    59              1                          6         wire [ADDR_WIDTH-ADDR_LSB-1:0] write_word_addr = write_addr[ADDR_WIDTH-1:ADDR_LSB];
+    60              1                          7         wire [ADDR_WIDTH-ADDR_LSB-1:0] read_word_addr =
+    61                                                       s_axi_araddr[ADDR_WIDTH-1:ADDR_LSB];
+    62                                               
+    63              1                          6         wire write_addr_aligned = write_addr[ADDR_LSB-1:0] == {ADDR_LSB{1'b0}};
+    64              1                          7         wire read_addr_aligned  = s_axi_araddr[ADDR_LSB-1:0] == {ADDR_LSB{1'b0}};
+    65              1                          6         wire write_addr_valid   = write_addr_aligned && (write_word_addr < REG_COUNT);
+    66              1                          7         wire read_addr_valid    = read_addr_aligned  && (read_word_addr  < REG_COUNT);
+    67                                               
+    68              1                         14         assign s_axi_awready = !awaddr_valid && !s_axi_bvalid;
+    69              1                         14         assign s_axi_wready  = !wdata_valid  && !s_axi_bvalid;
+    70                                                   assign s_axi_arready = !s_axi_rvalid;
+    71                                               
+    72                                                   genvar g;
+    73                                                   generate
+    74                                                       for (g = 0; g < REG_COUNT; g = g + 1) begin : gen_regs_flat
+    75              1                         24                 assign regs_flat[g*DATA_WIDTH +: DATA_WIDTH] = regs[g];
+    76                                                       end
+    77                                                   endgenerate
+    78                                               
+    79                                                   integer i;
+    80                                                   integer b;
+    81                                               
+    82              1                         21         always @(posedge aclk) begin
+    83                                                       if (!aresetn) begin
+    84              1                          2                 for (i = 0; i < REG_COUNT; i = i + 1) begin
+    84              2                          8     
+    85              1                          8                     regs[i] <= {DATA_WIDTH{1'b0}};
+    86                                                           end
+    87              1                          2                 awaddr_hold  <= {ADDR_WIDTH{1'b0}};
+    88              1                          2                 awaddr_valid <= 1'b0;
+    89              1                          2                 wdata_hold   <= {DATA_WIDTH{1'b0}};
+    90              1                          2                 wstrb_hold   <= {STRB_WIDTH{1'b0}};
+    91              1                          2                 wdata_valid  <= 1'b0;
+    92              1                          2                 s_axi_bresp  <= RESP_OKAY;
+    93              1                          2                 s_axi_bvalid <= 1'b0;
+    94                                                       end else begin
+    95                                                           if (aw_accept && !write_fire) begin
+    96              1                    ***0***                     awaddr_hold  <= s_axi_awaddr;
+    97              1                    ***0***                     awaddr_valid <= 1'b1;
+    98                                                           end
+    99                                               
+    100                                                          if (w_accept && !write_fire) begin
+    101             1                    ***0***                     wdata_hold  <= s_axi_wdata;
+    102             1                    ***0***                     wstrb_hold  <= s_axi_wstrb;
+    103             1                    ***0***                     wdata_valid <= 1'b1;
+    104                                                          end
+    105                                              
+    106                                                          if (write_fire) begin
+    107                                                              if (write_addr_valid) begin
+    108             1                          4                         for (b = 0; b < STRB_WIDTH; b = b + 1) begin
+    108             2                         16     
+    109                                                                      if (write_strb[b]) begin
+    110             1                         14                                 regs[write_word_addr][b*8 +: 8] <= write_data[b*8 +: 8];
+    111                                                                      end
+    112                                                                  end
+    113             1                          4                         s_axi_bresp <= RESP_OKAY;
+    114                                                              end else begin
+    115             1                          2                         s_axi_bresp <= RESP_SLVERR;
+    116                                                              end
+    117             1                          6                     s_axi_bvalid <= 1'b1;
+    118             1                          6                     awaddr_valid <= 1'b0;
+    119             1                          6                     wdata_valid  <= 1'b0;
+    120                                                          end else if (s_axi_bvalid && s_axi_bready) begin
+    121             1                          6                     s_axi_bvalid <= 1'b0;
+    122                                                          end
+    123                                                      end
+    124                                                  end
+    125                                              
+    126             1                         27         always @(posedge aclk) begin
+    127                                                      if (!aresetn) begin
+    128             1                          2                 s_axi_rdata  <= {DATA_WIDTH{1'b0}};
+    129             1                          2                 s_axi_rresp  <= RESP_OKAY;
+    130             1                          2                 s_axi_rvalid <= 1'b0;
+    131                                                      end else begin
+    132                                                          if (read_fire) begin
+    133                                                              if (read_addr_valid) begin
+    134             1                          4                         s_axi_rdata <= regs[read_word_addr];
+    135             1                          4                         s_axi_rresp <= RESP_OKAY;
+    136                                                              end else begin
+    137             1                          3                         s_axi_rdata <= {DATA_WIDTH{1'b0}};
+    138             1                          3                         s_axi_rresp <= RESP_SLVERR;
+    139                                                              end
+    140             1                          7                     s_axi_rvalid <= 1'b1;
+    141                                                          end else if (s_axi_rvalid && s_axi_rready) begin
+    142             1                          7                     s_axi_rvalid <= 1'b0;
+    143                                                          end
+    144                                                      end
+    145                                                  end
+    146                                              
+    147                                                  function integer clog2;
+    148                                                      input integer value;
+    149                                                      integer v;
+    150                                                      begin
+    151             1                    ***0***                 v = value - 1;
+    152             1                    ***0***                 for (clog2 = 0; v > 0; clog2 = clog2 + 1) begin
+    152             2                    ***0***     
+    153             1                    ***0***                     v = v >> 1;
+    154                                                          end
+    155                                                      end
+    156                                                  endfunction
+    157                                              
+    158                                              endmodule
+
+Branch Coverage:
+    Enabled Coverage            Active      Hits    Misses % Covered
+    ----------------            ------      ----    ------ ---------
+    Branches                        26        21         5     80.76
+
+================================Branch Details================================
+
+Branch Coverage for file rtl/axi_lite_slave_regs.v --
+
+------------------------------------IF Branch------------------------------------
+    55                                         5     Count coming in to IF
+    55              1                    ***0***         wire [ADDR_WIDTH-1:0] write_addr = awaddr_valid ? awaddr_hold : s_axi_awaddr;
+    55              2                          5         wire [ADDR_WIDTH-1:0] write_addr = awaddr_valid ? awaddr_hold : s_axi_awaddr;
+Branch totals: 1 hit of 2 branches = 50.00%
+
+------------------------------------IF Branch------------------------------------
+    56                                         7     Count coming in to IF
+    56              1                    ***0***         wire [DATA_WIDTH-1:0] write_data = wdata_valid ? wdata_hold : s_axi_wdata;
+    56              2                          7         wire [DATA_WIDTH-1:0] write_data = wdata_valid ? wdata_hold : s_axi_wdata;
+Branch totals: 1 hit of 2 branches = 50.00%
+
+------------------------------------IF Branch------------------------------------
+    57                                         4     Count coming in to IF
+    57              1                    ***0***         wire [STRB_WIDTH-1:0] write_strb = wdata_valid ? wstrb_hold : s_axi_wstrb;
+    57              2                          4         wire [STRB_WIDTH-1:0] write_strb = wdata_valid ? wstrb_hold : s_axi_wstrb;
+Branch totals: 1 hit of 2 branches = 50.00%
+
+------------------------------------IF Branch------------------------------------
+    83                                        21     Count coming in to IF
+    83              1                          2             if (!aresetn) begin
+    94              1                         19             end else begin
+Branch totals: 2 hits of 2 branches = 100.00%
+
+------------------------------------IF Branch------------------------------------
+    95                                        19     Count coming in to IF
+    95              1                    ***0***                 if (aw_accept && !write_fire) begin
+                                              19     All False Count
+Branch totals: 1 hit of 2 branches = 50.00%
+
+------------------------------------IF Branch------------------------------------
+    100                                       19     Count coming in to IF
+    100             1                    ***0***                 if (w_accept && !write_fire) begin
+                                              19     All False Count
+Branch totals: 1 hit of 2 branches = 50.00%
+
+------------------------------------IF Branch------------------------------------
+    106                                       19     Count coming in to IF
+    106             1                          6                 if (write_fire) begin
+    120             1                          6                 end else if (s_axi_bvalid && s_axi_bready) begin
+                                               7     All False Count
+Branch totals: 3 hits of 3 branches = 100.00%
+
+------------------------------------IF Branch------------------------------------
+    107                                        6     Count coming in to IF
+    107             1                          4                     if (write_addr_valid) begin
+    114             1                          2                     end else begin
+Branch totals: 2 hits of 2 branches = 100.00%
+
+------------------------------------IF Branch------------------------------------
+    109                                       16     Count coming in to IF
+    109             1                         14                             if (write_strb[b]) begin
+                                               2     All False Count
+Branch totals: 2 hits of 2 branches = 100.00%
+
+------------------------------------IF Branch------------------------------------
+    127                                       27     Count coming in to IF
+    127             1                          2             if (!aresetn) begin
+    131             1                         25             end else begin
+Branch totals: 2 hits of 2 branches = 100.00%
+
+------------------------------------IF Branch------------------------------------
+    132                                       25     Count coming in to IF
+    132             1                          7                 if (read_fire) begin
+    141             1                          7                 end else if (s_axi_rvalid && s_axi_rready) begin
+                                              11     All False Count
+Branch totals: 3 hits of 3 branches = 100.00%
+
+------------------------------------IF Branch------------------------------------
+    133                                        7     Count coming in to IF
+    133             1                          4                     if (read_addr_valid) begin
+    136             1                          3                     end else begin
+Branch totals: 2 hits of 2 branches = 100.00%
+
+
+Condition Coverage:
+    Enabled Coverage            Active   Covered    Misses % Covered
+    ----------------            ------      ----    ------ ---------
+    FEC Condition Terms              8         2         6     25.00
+
+================================Condition Details================================
+
+Condition Coverage for file rtl/axi_lite_slave_regs.v --
+
+----------------Focused Condition View-------------------
+Line       95 Item    1  (aw_accept && ~write_fire)
+Condition totals: 0 of 2 input terms covered = 0.00%
+
+  Input Term   Covered  Reason for no coverage   Hint
+ -----------  --------  -----------------------  --------------
+   aw_accept         N  '_1' not hit             Hit '_1'
+  write_fire         N  '_0' not hit             Hit '_0'
+
+     Rows:       Hits  FEC Target            Non-masking condition(s)      
+ ---------  ---------  --------------------  -------------------------     
+  Row   1:          1  aw_accept_0           -                             
+  Row   2:    ***0***  aw_accept_1           ~write_fire                   
+  Row   3:    ***0***  write_fire_0          aw_accept                     
+  Row   4:          1  write_fire_1          aw_accept                     
+
+----------------Focused Condition View-------------------
+Line       100 Item    1  (w_accept && ~write_fire)
+Condition totals: 0 of 2 input terms covered = 0.00%
+
+  Input Term   Covered  Reason for no coverage   Hint
+ -----------  --------  -----------------------  --------------
+    w_accept         N  '_1' not hit             Hit '_1'
+  write_fire         N  '_0' not hit             Hit '_0'
+
+     Rows:       Hits  FEC Target            Non-masking condition(s)      
+ ---------  ---------  --------------------  -------------------------     
+  Row   1:          1  w_accept_0            -                             
+  Row   2:    ***0***  w_accept_1            ~write_fire                   
+  Row   3:    ***0***  write_fire_0          w_accept                      
+  Row   4:          1  write_fire_1          w_accept                      
+
+----------------Focused Condition View-------------------
+Line       120 Item    1  (s_axi_bvalid && s_axi_bready)
+Condition totals: 1 of 2 input terms covered = 50.00%
+
+    Input Term   Covered  Reason for no coverage   Hint
+   -----------  --------  -----------------------  --------------
+  s_axi_bvalid         Y
+  s_axi_bready         N  '_0' not hit             Hit '_0'
+
+     Rows:       Hits  FEC Target            Non-masking condition(s)      
+ ---------  ---------  --------------------  -------------------------     
+  Row   1:          1  s_axi_bvalid_0        -                             
+  Row   2:          1  s_axi_bvalid_1        s_axi_bready                  
+  Row   3:    ***0***  s_axi_bready_0        s_axi_bvalid                  
+  Row   4:          1  s_axi_bready_1        s_axi_bvalid                  
+
+----------------Focused Condition View-------------------
+Line       141 Item    1  (s_axi_rvalid && s_axi_rready)
+Condition totals: 1 of 2 input terms covered = 50.00%
+
+    Input Term   Covered  Reason for no coverage   Hint
+   -----------  --------  -----------------------  --------------
+  s_axi_rvalid         Y
+  s_axi_rready         N  '_0' not hit             Hit '_0'
+
+     Rows:       Hits  FEC Target            Non-masking condition(s)      
+ ---------  ---------  --------------------  -------------------------     
+  Row   1:          1  s_axi_rvalid_0        -                             
+  Row   2:          1  s_axi_rvalid_1        s_axi_rready                  
+  Row   3:    ***0***  s_axi_rready_0        s_axi_rvalid                  
+  Row   4:          1  s_axi_rready_1        s_axi_rvalid                  
+
+
+Expression Coverage:
+    Enabled Coverage            Active   Covered    Misses % Covered
+    ----------------            ------      ----    ------ ---------
+    FEC Expression Terms            21        16         5     76.19
+
+================================Expression Details================================
+
+Expression Coverage for file rtl/axi_lite_slave_regs.v --
+
+----------------Focused Expression View-----------------
+Line       48 Item    1  (s_axi_awready && s_axi_awvalid)
+Expression totals: 2 of 2 input terms covered = 100.00%
+
+----------------Focused Expression View-----------------
+Line       49 Item    1  (s_axi_wready && s_axi_wvalid)
+Expression totals: 2 of 2 input terms covered = 100.00%
+
+----------------Focused Expression View-----------------
+Line       50 Item    1  ((~s_axi_bvalid && (awaddr_valid || aw_accept)) && (wdata_valid || w_accept))
+Expression totals: 2 of 5 input terms covered = 40.00%
+
+    Input Term   Covered  Reason for no coverage   Hint
+   -----------  --------  -----------------------  --------------
+  s_axi_bvalid         Y
+  awaddr_valid         N  '_1' not hit             Hit '_1'
+     aw_accept         Y
+   wdata_valid         N  No hits                  Hit '_0' and '_1'
+      w_accept         N  '_0' not hit             Hit '_0'
+
+     Rows:       Hits  FEC Target            Non-masking condition(s)      
+ ---------  ---------  --------------------  -------------------------     
+  Row   1:          1  s_axi_bvalid_0        ((wdata_valid || w_accept) && (awaddr_valid || aw_accept))
+  Row   2:          1  s_axi_bvalid_1        -                             
+  Row   3:          1  awaddr_valid_0        (~s_axi_bvalid && ~aw_accept) 
+  Row   4:    ***0***  awaddr_valid_1        ((wdata_valid || w_accept) && ~s_axi_bvalid)
+  Row   5:          1  aw_accept_0           (~s_axi_bvalid && ~awaddr_valid)
+  Row   6:          1  aw_accept_1           ((wdata_valid || w_accept) && ~s_axi_bvalid && ~awaddr_valid)
+  Row   7:    ***0***  wdata_valid_0         ((~s_axi_bvalid && (awaddr_valid || aw_accept)) && ~w_accept)
+  Row   8:    ***0***  wdata_valid_1         (~s_axi_bvalid && (awaddr_valid || aw_accept))
+  Row   9:    ***0***  w_accept_0            ((~s_axi_bvalid && (awaddr_valid || aw_accept)) && ~wdata_valid)
+ Row   10:          1  w_accept_1            ((~s_axi_bvalid && (awaddr_valid || aw_accept)) && ~wdata_valid)
+
+----------------Focused Expression View-----------------
+Line       53 Item    1  (s_axi_arready && s_axi_arvalid)
+Expression totals: 2 of 2 input terms covered = 100.00%
+
+----------------Focused Expression View-----------------
+Line       63 Item    1  (write_addr[1:0] == {2{0}})
+Expression totals: 1 of 1 input term covered = 100.00%
+
+----------------Focused Expression View-----------------
+Line       64 Item    1  (s_axi_araddr[1:0] == {2{0}})
+Expression totals: 1 of 1 input term covered = 100.00%
+
+----------------Focused Expression View-----------------
+Line       65 Item    1  (write_addr_aligned && (write_word_addr < 4))
+Expression totals: 2 of 2 input terms covered = 100.00%
+
+----------------Focused Expression View-----------------
+Line       66 Item    1  (read_addr_aligned && (read_word_addr < 4))
+Expression totals: 2 of 2 input terms covered = 100.00%
+
+----------------Focused Expression View-----------------
+Line       68 Item    1  (awaddr_valid ~| s_axi_bvalid)
+Expression totals: 1 of 2 input terms covered = 50.00%
+
+    Input Term   Covered  Reason for no coverage   Hint
+   -----------  --------  -----------------------  --------------
+  awaddr_valid         N  '_1' not hit             Hit '_1'
+  s_axi_bvalid         Y
+
+     Rows:       Hits  FEC Target            Non-masking condition(s)      
+ ---------  ---------  --------------------  -------------------------     
+  Row   1:          1  awaddr_valid_0        ~s_axi_bvalid                 
+  Row   2:    ***0***  awaddr_valid_1        ~s_axi_bvalid                 
+  Row   3:          1  s_axi_bvalid_0        ~awaddr_valid                 
+  Row   4:          1  s_axi_bvalid_1        ~awaddr_valid                 
+
+----------------Focused Expression View-----------------
+Line       69 Item    1  (wdata_valid ~| s_axi_bvalid)
+Expression totals: 1 of 2 input terms covered = 50.00%
+
+    Input Term   Covered  Reason for no coverage   Hint
+   -----------  --------  -----------------------  --------------
+   wdata_valid         N  '_1' not hit             Hit '_1'
+  s_axi_bvalid         Y
+
+     Rows:       Hits  FEC Target            Non-masking condition(s)      
+ ---------  ---------  --------------------  -------------------------     
+  Row   1:          1  wdata_valid_0         ~s_axi_bvalid                 
+  Row   2:    ***0***  wdata_valid_1         ~s_axi_bvalid                 
+  Row   3:          1  s_axi_bvalid_0        ~wdata_valid                  
+  Row   4:          1  s_axi_bvalid_1        ~wdata_valid                  
+
+
+Toggle Coverage:
+    Enabled Coverage            Active      Hits    Misses % Covered
+    ----------------            ------      ----    ------ ---------
+    Toggle Bins                    424       153       271     36.08
+
+================================Toggle Details================================
+
+Toggle Coverage for File rtl/axi_lite_slave_regs.v --
+
+       Line                                   Node      1H->0L      0L->1H  "Coverage"
+--------------------------------------------------------------------------------------
+         20                         s_axi_bresp[1]           0           1       50.00 
+         20                         s_axi_bresp[0]           0           0        0.00 
+         28                         s_axi_rdata[7]           0           0        0.00 
+         28                         s_axi_rdata[1]           0           0        0.00 
+         28                        s_axi_rdata[15]           0           0        0.00 
+         28                        s_axi_rdata[13]           0           0        0.00 
+         28                        s_axi_rdata[11]           0           0        0.00 
+         29                         s_axi_rresp[1]           0           1       50.00 
+         29                         s_axi_rresp[0]           0           0        0.00 
+         42                         awaddr_hold[7]           0           0        0.00 
+         42                         awaddr_hold[6]           0           0        0.00 
+         42                         awaddr_hold[5]           0           0        0.00 
+         42                         awaddr_hold[4]           0           0        0.00 
+         42                         awaddr_hold[3]           0           0        0.00 
+         42                         awaddr_hold[2]           0           0        0.00 
+         42                         awaddr_hold[1]           0           0        0.00 
+         42                         awaddr_hold[0]           0           0        0.00 
+         43                           awaddr_valid           0           0        0.00 
+         44                          wdata_hold[9]           0           0        0.00 
+         44                          wdata_hold[8]           0           0        0.00 
+         44                          wdata_hold[7]           0           0        0.00 
+         44                          wdata_hold[6]           0           0        0.00 
+         44                          wdata_hold[5]           0           0        0.00 
+         44                          wdata_hold[4]           0           0        0.00 
+         44                          wdata_hold[3]           0           0        0.00 
+         44                         wdata_hold[31]           0           0        0.00 
+         44                         wdata_hold[30]           0           0        0.00 
+         44                          wdata_hold[2]           0           0        0.00 
+         44                         wdata_hold[29]           0           0        0.00 
+         44                         wdata_hold[28]           0           0        0.00 
+         44                         wdata_hold[27]           0           0        0.00 
+         44                         wdata_hold[26]           0           0        0.00 
+         44                         wdata_hold[25]           0           0        0.00 
+         44                         wdata_hold[24]           0           0        0.00 
+         44                         wdata_hold[23]           0           0        0.00 
+         44                         wdata_hold[22]           0           0        0.00 
+         44                         wdata_hold[21]           0           0        0.00 
+         44                         wdata_hold[20]           0           0        0.00 
+         44                          wdata_hold[1]           0           0        0.00 
+         44                         wdata_hold[19]           0           0        0.00 
+         44                         wdata_hold[18]           0           0        0.00 
+         44                         wdata_hold[17]           0           0        0.00 
+         44                         wdata_hold[16]           0           0        0.00 
+         44                         wdata_hold[15]           0           0        0.00 
+         44                         wdata_hold[14]           0           0        0.00 
+         44                         wdata_hold[13]           0           0        0.00 
+         44                         wdata_hold[12]           0           0        0.00 
+         44                         wdata_hold[11]           0           0        0.00 
+         44                         wdata_hold[10]           0           0        0.00 
+         44                          wdata_hold[0]           0           0        0.00 
+         45                          wstrb_hold[3]           0           0        0.00 
+         45                          wstrb_hold[2]           0           0        0.00 
+         45                          wstrb_hold[1]           0           0        0.00 
+         45                          wstrb_hold[0]           0           0        0.00 
+         46                            wdata_valid           0           0        0.00 
+         55                          write_addr[7]           0           0        0.00 
+         55                          write_addr[6]           0           0        0.00 
+         55                          write_addr[4]           0           0        0.00 
+         55                          write_addr[1]           0           0        0.00 
+         55                          write_addr[0]           0           1       50.00 
+         56                          write_data[7]           0           1       50.00 
+         56                         write_data[31]           0           1       50.00 
+         56                         write_data[30]           0           1       50.00 
+         56                         write_data[27]           0           1       50.00 
+         56                         write_data[25]           0           1       50.00 
+         56                         write_data[23]           0           1       50.00 
+         56                          write_data[1]           0           1       50.00 
+         56                         write_data[19]           0           1       50.00 
+         57                          write_strb[3]           0           1       50.00 
+         57                          write_strb[2]           0           1       50.00 
+         59                     write_word_addr[5]           0           0        0.00 
+         59                     write_word_addr[4]           0           0        0.00 
+         59                     write_word_addr[2]           0           0        0.00 
+         60                      read_word_addr[5]           0           0        0.00 
+         60                      read_word_addr[4]           0           0        0.00 
+         60                      read_word_addr[2]           0           0        0.00 
+         63                     write_addr_aligned           1           0       50.00 
+         64                      read_addr_aligned           1           0       50.00 
+         65                       write_addr_valid           1           0       50.00 
+         66                        read_addr_valid           1           0       50.00 
+         79                                   i[9]           0           0        0.00 
+         79                                   i[8]           0           0        0.00 
+         79                                   i[7]           0           0        0.00 
+         79                                   i[6]           0           0        0.00 
+         79                                   i[5]           0           0        0.00 
+         79                                   i[4]           0           0        0.00 
+         79                                   i[3]           0           0        0.00 
+         79                                  i[31]           0           0        0.00 
+         79                                  i[30]           0           0        0.00 
+         79                                   i[2]           0           0        0.00 
+         79                                  i[29]           0           0        0.00 
+         79                                  i[28]           0           0        0.00 
+         79                                  i[27]           0           0        0.00 
+         79                                  i[26]           0           0        0.00 
+         79                                  i[25]           0           0        0.00 
+         79                                  i[24]           0           0        0.00 
+         79                                  i[23]           0           0        0.00 
+         79                                  i[22]           0           0        0.00 
+         79                                  i[21]           0           0        0.00 
+         79                                  i[20]           0           0        0.00 
+         79                                   i[1]           0           0        0.00 
+         79                                  i[19]           0           0        0.00 
+         79                                  i[18]           0           0        0.00 
+         79                                  i[17]           0           0        0.00 
+         79                                  i[16]           0           0        0.00 
+         79                                  i[15]           0           0        0.00 
+         79                                  i[14]           0           0        0.00 
+         79                                  i[13]           0           0        0.00 
+         79                                  i[12]           0           0        0.00 
+         79                                  i[11]           0           0        0.00 
+         79                                  i[10]           0           0        0.00 
+         79                                   i[0]           0           0        0.00 
+         80                                   b[9]           0           0        0.00 
+         80                                   b[8]           0           0        0.00 
+         80                                   b[7]           0           0        0.00 
+         80                                   b[6]           0           0        0.00 
+         80                                   b[5]           0           0        0.00 
+         80                                   b[4]           0           0        0.00 
+         80                                   b[3]           0           0        0.00 
+         80                                  b[31]           0           0        0.00 
+         80                                  b[30]           0           0        0.00 
+         80                                   b[2]           0           0        0.00 
+         80                                  b[29]           0           0        0.00 
+         80                                  b[28]           0           0        0.00 
+         80                                  b[27]           0           0        0.00 
+         80                                  b[26]           0           0        0.00 
+         80                                  b[25]           0           0        0.00 
+         80                                  b[24]           0           0        0.00 
+         80                                  b[23]           0           0        0.00 
+         80                                  b[22]           0           0        0.00 
+         80                                  b[21]           0           0        0.00 
+         80                                  b[20]           0           0        0.00 
+         80                                   b[1]           0           0        0.00 
+         80                                  b[19]           0           0        0.00 
+         80                                  b[18]           0           0        0.00 
+         80                                  b[17]           0           0        0.00 
+         80                                  b[16]           0           0        0.00 
+         80                                  b[15]           0           0        0.00 
+         80                                  b[14]           0           0        0.00 
+         80                                  b[13]           0           0        0.00 
+         80                                  b[12]           0           0        0.00 
+         80                                  b[11]           0           0        0.00 
+         80                                  b[10]           0           0        0.00 
+         80                                   b[0]           0           0        0.00 
+
+Total Node Count     =        212 
+Toggled Node Count   =         68 
+Untoggled Node Count =        144 
+
+Toggle Coverage      =      36.08% (153 of 424 bins)
+
+=================================================================================
+=== File: sim/tb_axi_lite_slave_regs.v
+=================================================================================
+Statement Coverage:
+    Enabled Coverage            Active      Hits    Misses % Covered
+    ----------------            ------      ----    ------ ---------
+    Stmts                           64        60         4     93.75
+
+================================Statement Details================================
+
+Statement Coverage for file sim/tb_axi_lite_slave_regs.v --
+
+    1                                                `timescale 1ns/1ps
+    2                                                
+    3                                                module tb_axi_lite_slave_regs;
+    4                                                    localparam integer DATA_WIDTH = 32;
+    5                                                    localparam integer ADDR_WIDTH = 8;
+    6                                                    localparam integer REG_COUNT  = 4;
+    7                                                
+    8                                                    reg                      aclk;
+    9                                                    reg                      aresetn;
+    10                                                   reg  [ADDR_WIDTH-1:0]    s_axi_awaddr;
+    11                                                   reg                      s_axi_awvalid;
+    12                                                   wire                     s_axi_awready;
+    13                                                   reg  [DATA_WIDTH-1:0]    s_axi_wdata;
+    14                                                   reg  [DATA_WIDTH/8-1:0]  s_axi_wstrb;
+    15                                                   reg                      s_axi_wvalid;
+    16                                                   wire                     s_axi_wready;
+    17                                                   wire [1:0]               s_axi_bresp;
+    18                                                   wire                     s_axi_bvalid;
+    19                                                   reg                      s_axi_bready;
+    20                                                   reg  [ADDR_WIDTH-1:0]    s_axi_araddr;
+    21                                                   reg                      s_axi_arvalid;
+    22                                                   wire                     s_axi_arready;
+    23                                                   wire [DATA_WIDTH-1:0]    s_axi_rdata;
+    24                                                   wire [1:0]               s_axi_rresp;
+    25                                                   wire                     s_axi_rvalid;
+    26                                                   reg                      s_axi_rready;
+    27                                                   wire [REG_COUNT*DATA_WIDTH-1:0] regs_flat;
+    28                                               
+    29                                                   axi_lite_slave_regs #(
+    30                                                       .DATA_WIDTH(DATA_WIDTH),
+    31                                                       .ADDR_WIDTH(ADDR_WIDTH),
+    32                                                       .REG_COUNT(REG_COUNT)
+    33                                                   ) dut (
+    34                                                       .aclk(aclk),
+    35                                                       .aresetn(aresetn),
+    36                                                       .s_axi_awaddr(s_axi_awaddr),
+    37                                                       .s_axi_awvalid(s_axi_awvalid),
+    38                                                       .s_axi_awready(s_axi_awready),
+    39                                                       .s_axi_wdata(s_axi_wdata),
+    40                                                       .s_axi_wstrb(s_axi_wstrb),
+    41                                                       .s_axi_wvalid(s_axi_wvalid),
+    42                                                       .s_axi_wready(s_axi_wready),
+    43                                                       .s_axi_bresp(s_axi_bresp),
+    44                                                       .s_axi_bvalid(s_axi_bvalid),
+    45                                                       .s_axi_bready(s_axi_bready),
+    46                                                       .s_axi_araddr(s_axi_araddr),
+    47                                                       .s_axi_arvalid(s_axi_arvalid),
+    48                                                       .s_axi_arready(s_axi_arready),
+    49                                                       .s_axi_rdata(s_axi_rdata),
+    50                                                       .s_axi_rresp(s_axi_rresp),
+    51                                                       .s_axi_rvalid(s_axi_rvalid),
+    52                                                       .s_axi_rready(s_axi_rready),
+    53                                                       .regs_flat(regs_flat)
+    54                                                   );
+    55                                               
+    56                                                   axi_lite_slave_assertions #(
+    57                                                       .DATA_WIDTH(DATA_WIDTH),
+    58                                                       .ADDR_WIDTH(ADDR_WIDTH),
+    59                                                       .REG_COUNT(REG_COUNT),
+    60                                                       .MAX_RESP_LATENCY(16)
+    61                                                   ) axi_assert_i (
+    62                                                       .aclk(aclk),
+    63                                                       .aresetn(aresetn),
+    64                                                       .s_axi_awaddr(s_axi_awaddr),
+    65                                                       .s_axi_awvalid(s_axi_awvalid),
+    66                                                       .s_axi_awready(s_axi_awready),
+    67                                                       .s_axi_wdata(s_axi_wdata),
+    68                                                       .s_axi_wstrb(s_axi_wstrb),
+    69                                                       .s_axi_wvalid(s_axi_wvalid),
+    70                                                       .s_axi_wready(s_axi_wready),
+    71                                                       .s_axi_bresp(s_axi_bresp),
+    72                                                       .s_axi_bvalid(s_axi_bvalid),
+    73                                                       .s_axi_bready(s_axi_bready),
+    74                                                       .s_axi_araddr(s_axi_araddr),
+    75                                                       .s_axi_arvalid(s_axi_arvalid),
+    76                                                       .s_axi_arready(s_axi_arready),
+    77                                                       .s_axi_rdata(s_axi_rdata),
+    78                                                       .s_axi_rresp(s_axi_rresp),
+    79                                                       .s_axi_rvalid(s_axi_rvalid),
+    80                                                       .s_axi_rready(s_axi_rready)
+    81                                                   );
+    82                                               
+    83                                                   initial begin
+    84              1                          1             aclk = 1'b0;
+    85              1                          1             forever #5 aclk = ~aclk;
+    85              2                         92     
+    85              3                         91     
+    86                                                   end
+    87                                               
+    88                                                   initial begin
+    89              1                          1             aresetn       = 1'b0;
+    90              1                          1             s_axi_awaddr  = {ADDR_WIDTH{1'b0}};
+    91              1                          1             s_axi_awvalid = 1'b0;
+    92              1                          1             s_axi_wdata   = {DATA_WIDTH{1'b0}};
+    93              1                          1             s_axi_wstrb   = {DATA_WIDTH/8{1'b0}};
+    94              1                          1             s_axi_wvalid  = 1'b0;
+    95              1                          1             s_axi_bready  = 1'b0;
+    96              1                          1             s_axi_araddr  = {ADDR_WIDTH{1'b0}};
+    97              1                          1             s_axi_arvalid = 1'b0;
+    98              1                          1             s_axi_rready  = 1'b0;
+    99                                               
+    100             1                          5             repeat (5) @(posedge aclk);
+    100             2                          5     
+    101             1                          1             aresetn = 1'b1;
+    102             1                          2             repeat (2) @(posedge aclk);
+    102             2                          2     
+    103                                              
+    104             1                          1             axi_write(8'h00, 32'h1234_5678, 4'hF, 2'b00);
+    105             1                          1             axi_read(8'h00, 32'h1234_5678, 2'b00);
+    106                                              
+    107             1                          1             axi_write(8'h00, 32'hABCD_EF00, 4'b1100, 2'b00);
+    108             1                          1             axi_read(8'h00, 32'hABCD_5678, 2'b00);
+    109                                              
+    110             1                          1             axi_write(8'h04, 32'hAAAA_5555, 4'hF, 2'b00);
+    111             1                          1             axi_read(8'h04, 32'hAAAA_5555, 2'b00);
+    112                                              
+    113             1                          1             axi_write(8'h08, 32'hFFFF_0000, 4'hF, 2'b00);
+    114             1                          1             axi_read(8'h08, 32'hFFFF_0000, 2'b00);
+    115                                              
+    116             1                          1             axi_write(8'h20, 32'hDEAD_BEEF, 4'hF, 2'b10);
+    117             1                          1             axi_read(8'h20, 32'h0000_0000, 2'b10);
+    118             1                          1             axi_read(8'h24, 32'h0000_0000, 2'b10);
+    119                                              
+    120             1                          1             axi_write(8'h01, 32'hCAFE_BABE, 4'hF, 2'b10);
+    121             1                          1             axi_read(8'h01, 32'h0000_0000, 2'b10);
+    122                                              
+    123             1                          1             $display("PASS");
+    124             1                          1             $finish;
+    125                                                  end
+    126                                              
+    127                                                  task axi_write;
+    128                                                      input [ADDR_WIDTH-1:0]   addr;
+    129                                                      input [DATA_WIDTH-1:0]   data;
+    130                                                      input [DATA_WIDTH/8-1:0] strb;
+    131                                                      input [1:0]              exp_resp;
+    132                                                      begin
+    133             1                          6                 @(posedge aclk);
+    134             1                          6                 s_axi_awaddr  <= addr;
+    135             1                          6                 s_axi_awvalid <= 1'b1;
+    136             1                          6                 s_axi_wdata   <= data;
+    137             1                          6                 s_axi_wstrb   <= strb;
+    138             1                          6                 s_axi_wvalid  <= 1'b1;
+    139             1                          6                 s_axi_bready  <= 1'b1;
+    140                                              
+    141                                                          fork
+    142                                                              begin
+    143             1                          6                         wait (s_axi_awready);
+    144             1                          6                         @(posedge aclk);
+    145             1                          6                         s_axi_awvalid <= 1'b0;
+    146                                                              end
+    147                                                              begin
+    148             1                          6                         wait (s_axi_wready);
+    149             1                          6                         @(posedge aclk);
+    150             1                          6                         s_axi_wvalid <= 1'b0;
+    151                                                              end
+    152                                                          join
+    153                                              
+    154             1                          6                 wait (s_axi_bvalid);
+    155                                                          if (s_axi_bresp !== exp_resp) begin
+    156             1                    ***0***                     $display("WRITE RESP ERROR: addr=%h resp=%b expected=%b", addr, s_axi_bresp, exp_resp);
+    157             1                    ***0***                     $fatal;
+    158                                                          end
+    159             1                          6                 @(posedge aclk);
+    160             1                          6                 s_axi_bready <= 1'b0;
+    161                                                      end
+    162                                                  endtask
+    163                                              
+    164                                                  task axi_read;
+    165                                                      input [ADDR_WIDTH-1:0] addr;
+    166                                                      input [DATA_WIDTH-1:0] exp_data;
+    167                                                      input [1:0]            exp_resp;
+    168                                                      begin
+    169             1                          7                 @(posedge aclk);
+    170             1                          7                 s_axi_araddr  <= addr;
+    171             1                          7                 s_axi_arvalid <= 1'b1;
+    172             1                          7                 s_axi_rready  <= 1'b1;
+    173                                              
+    174             1                          7                 wait (s_axi_arready);
+    175             1                          7                 @(posedge aclk);
+    176             1                          7                 s_axi_arvalid <= 1'b0;
+    177                                              
+    178             1                          7                 wait (s_axi_rvalid);
+    179                                                          if (s_axi_rresp !== exp_resp || s_axi_rdata !== exp_data) begin
+    180             1                    ***0***                     $display("READ ERROR: addr=%h data=%h resp=%b expected_data=%h expected_resp=%b",
+    181                                                                       addr, s_axi_rdata, s_axi_rresp, exp_data, exp_resp);
+    182             1                    ***0***                     $fatal;
+    183                                                          end
+    184             1                          7                 @(posedge aclk);
+    185             1                          7                 s_axi_rready <= 1'b0;
+    186                                                      end
+    187                                                  endtask
+    188                                              
+    189                                              endmodule
+
+Branch Coverage:
+    Enabled Coverage            Active      Hits    Misses % Covered
+    ----------------            ------      ----    ------ ---------
+    Branches                         4         2         2     50.00
+
+================================Branch Details================================
+
+Branch Coverage for file sim/tb_axi_lite_slave_regs.v --
+
+------------------------------------IF Branch------------------------------------
+    155                                        6     Count coming in to IF
+    155             1                    ***0***                 if (s_axi_bresp !== exp_resp) begin
+                                               6     All False Count
+Branch totals: 1 hit of 2 branches = 50.00%
+
+------------------------------------IF Branch------------------------------------
+    179                                        7     Count coming in to IF
+    179             1                    ***0***                 if (s_axi_rresp !== exp_resp || s_axi_rdata !== exp_data) begin
+                                               7     All False Count
+Branch totals: 1 hit of 2 branches = 50.00%
+
+
+Condition Coverage:
+    Enabled Coverage            Active   Covered    Misses % Covered
+    ----------------            ------      ----    ------ ---------
+    FEC Condition Terms              3         0         3      0.00
+
+================================Condition Details================================
+
+Condition Coverage for file sim/tb_axi_lite_slave_regs.v --
+
+----------------Focused Condition View-------------------
+Line       155 Item    1  (s_axi_bresp !== exp_resp)
+Condition totals: 0 of 1 input term covered = 0.00%
+
+                  Input Term   Covered  Reason for no coverage   Hint
+                 -----------  --------  -----------------------  --------------
+  (s_axi_bresp !== exp_resp)         N  '_1' not hit             Hit '_1'
+
+     Rows:       Hits  FEC Target                    Non-masking condition(s)      
+ ---------  ---------  --------------------          -------------------------     
+  Row   1:          1  (s_axi_bresp !== exp_resp)_0  -                             
+  Row   2:    ***0***  (s_axi_bresp !== exp_resp)_1  -                             
+
+----------------Focused Condition View-------------------
+Line       179 Item    1  ((s_axi_rresp !== exp_resp) || (s_axi_rdata !== exp_data))
+Condition totals: 0 of 2 input terms covered = 0.00%
+
+                  Input Term   Covered  Reason for no coverage   Hint
+                 -----------  --------  -----------------------  --------------
+  (s_axi_rresp !== exp_resp)         N  '_1' not hit             Hit '_1'
+  (s_axi_rdata !== exp_data)         N  '_1' not hit             Hit '_1'
+
+     Rows:       Hits  FEC Target                    Non-masking condition(s)      
+ ---------  ---------  --------------------          -------------------------     
+  Row   1:          1  (s_axi_rresp !== exp_resp)_0  ~(s_axi_rdata !== exp_data)   
+  Row   2:    ***0***  (s_axi_rresp !== exp_resp)_1  -                             
+  Row   3:          1  (s_axi_rdata !== exp_data)_0  ~(s_axi_rresp !== exp_resp)   
+  Row   4:    ***0***  (s_axi_rdata !== exp_data)_1  ~(s_axi_rresp !== exp_resp)   
+
+
+Toggle Coverage:
+    Enabled Coverage            Active      Hits    Misses % Covered
+    ----------------            ------      ----    ------ ---------
+    Toggle Bins                    456       211       245     46.27
+
+================================Toggle Details================================
+
+Toggle Coverage for File sim/tb_axi_lite_slave_regs.v --
+
+       Line                                   Node      1H->0L      0L->1H  "Coverage"
+--------------------------------------------------------------------------------------
+          9                                aresetn           0           1       50.00 
+         10                        s_axi_awaddr[7]           0           0        0.00 
+         10                        s_axi_awaddr[6]           0           0        0.00 
+         10                        s_axi_awaddr[4]           0           0        0.00 
+         10                        s_axi_awaddr[1]           0           0        0.00 
+         10                        s_axi_awaddr[0]           0           1       50.00 
+         13                         s_axi_wdata[7]           0           1       50.00 
+         13                        s_axi_wdata[31]           0           1       50.00 
+         13                        s_axi_wdata[30]           0           1       50.00 
+         13                        s_axi_wdata[27]           0           1       50.00 
+         13                        s_axi_wdata[25]           0           1       50.00 
+         13                        s_axi_wdata[23]           0           1       50.00 
+         13                         s_axi_wdata[1]           0           1       50.00 
+         13                        s_axi_wdata[19]           0           1       50.00 
+         14                         s_axi_wstrb[3]           0           1       50.00 
+         14                         s_axi_wstrb[2]           0           1       50.00 
+         17                         s_axi_bresp[1]           0           1       50.00 
+         17                         s_axi_bresp[0]           0           0        0.00 
+         20                        s_axi_araddr[7]           0           0        0.00 
+         20                        s_axi_araddr[6]           0           0        0.00 
+         20                        s_axi_araddr[4]           0           0        0.00 
+         20                        s_axi_araddr[1]           0           0        0.00 
+         20                        s_axi_araddr[0]           0           1       50.00 
+         23                         s_axi_rdata[7]           0           0        0.00 
+         23                         s_axi_rdata[1]           0           0        0.00 
+         23                        s_axi_rdata[15]           0           0        0.00 
+         23                        s_axi_rdata[13]           0           0        0.00 
+         23                        s_axi_rdata[11]           0           0        0.00 
+         24                         s_axi_rresp[1]           0           1       50.00 
+         24                         s_axi_rresp[0]           0           0        0.00 
+         27                           regs_flat[9]           0           1       50.00 
+         27                          regs_flat[99]           0           0        0.00 
+         27                          regs_flat[98]           0           0        0.00 
+         27                          regs_flat[97]           0           0        0.00 
+         27                          regs_flat[96]           0           0        0.00 
+         27                          regs_flat[95]           0           1       50.00 
+         27                          regs_flat[94]           0           1       50.00 
+         27                          regs_flat[93]           0           1       50.00 
+         27                          regs_flat[92]           0           1       50.00 
+         27                          regs_flat[91]           0           1       50.00 
+         27                          regs_flat[90]           0           1       50.00 
+         27                           regs_flat[8]           0           0        0.00 
+         27                          regs_flat[89]           0           1       50.00 
+         27                          regs_flat[88]           0           1       50.00 
+         27                          regs_flat[87]           0           1       50.00 
+         27                          regs_flat[86]           0           1       50.00 
+         27                          regs_flat[85]           0           1       50.00 
+         27                          regs_flat[84]           0           1       50.00 
+         27                          regs_flat[83]           0           1       50.00 
+         27                          regs_flat[82]           0           1       50.00 
+         27                          regs_flat[81]           0           1       50.00 
+         27                          regs_flat[80]           0           1       50.00 
+         27                           regs_flat[7]           0           0        0.00 
+         27                          regs_flat[79]           0           0        0.00 
+         27                          regs_flat[78]           0           0        0.00 
+         27                          regs_flat[77]           0           0        0.00 
+         27                          regs_flat[76]           0           0        0.00 
+         27                          regs_flat[75]           0           0        0.00 
+         27                          regs_flat[74]           0           0        0.00 
+         27                          regs_flat[73]           0           0        0.00 
+         27                          regs_flat[72]           0           0        0.00 
+         27                          regs_flat[71]           0           0        0.00 
+         27                          regs_flat[70]           0           0        0.00 
+         27                           regs_flat[6]           0           1       50.00 
+         27                          regs_flat[69]           0           0        0.00 
+         27                          regs_flat[68]           0           0        0.00 
+         27                          regs_flat[67]           0           0        0.00 
+         27                          regs_flat[66]           0           0        0.00 
+         27                          regs_flat[65]           0           0        0.00 
+         27                          regs_flat[64]           0           0        0.00 
+         27                          regs_flat[63]           0           1       50.00 
+         27                          regs_flat[62]           0           0        0.00 
+         27                          regs_flat[61]           0           1       50.00 
+         27                          regs_flat[60]           0           0        0.00 
+         27                           regs_flat[5]           0           1       50.00 
+         27                          regs_flat[59]           0           1       50.00 
+         27                          regs_flat[58]           0           0        0.00 
+         27                          regs_flat[57]           0           1       50.00 
+         27                          regs_flat[56]           0           0        0.00 
+         27                          regs_flat[55]           0           1       50.00 
+         27                          regs_flat[54]           0           0        0.00 
+         27                          regs_flat[53]           0           1       50.00 
+         27                          regs_flat[52]           0           0        0.00 
+         27                          regs_flat[51]           0           1       50.00 
+         27                          regs_flat[50]           0           0        0.00 
+         27                           regs_flat[4]           0           1       50.00 
+         27                          regs_flat[49]           0           1       50.00 
+         27                          regs_flat[48]           0           0        0.00 
+         27                          regs_flat[47]           0           0        0.00 
+         27                          regs_flat[46]           0           1       50.00 
+         27                          regs_flat[45]           0           0        0.00 
+         27                          regs_flat[44]           0           1       50.00 
+         27                          regs_flat[43]           0           0        0.00 
+         27                          regs_flat[42]           0           1       50.00 
+         27                          regs_flat[41]           0           0        0.00 
+         27                          regs_flat[40]           0           1       50.00 
+         27                           regs_flat[3]           0           1       50.00 
+         27                          regs_flat[39]           0           0        0.00 
+         27                          regs_flat[38]           0           1       50.00 
+         27                          regs_flat[37]           0           0        0.00 
+         27                          regs_flat[36]           0           1       50.00 
+         27                          regs_flat[35]           0           0        0.00 
+         27                          regs_flat[34]           0           1       50.00 
+         27                          regs_flat[33]           0           0        0.00 
+         27                          regs_flat[32]           0           1       50.00 
+         27                          regs_flat[31]           0           1       50.00 
+         27                          regs_flat[30]           0           0        0.00 
+         27                           regs_flat[2]           0           0        0.00 
+         27                          regs_flat[29]           0           1       50.00 
+         27                          regs_flat[27]           0           1       50.00 
+         27                          regs_flat[26]           0           0        0.00 
+         27                          regs_flat[25]           0           1       50.00 
+         27                          regs_flat[24]           0           1       50.00 
+         27                          regs_flat[23]           0           1       50.00 
+         27                          regs_flat[22]           0           1       50.00 
+         27                           regs_flat[1]           0           0        0.00 
+         27                          regs_flat[19]           0           1       50.00 
+         27                          regs_flat[18]           0           1       50.00 
+         27                          regs_flat[17]           0           0        0.00 
+         27                          regs_flat[16]           0           1       50.00 
+         27                          regs_flat[15]           0           0        0.00 
+         27                          regs_flat[14]           0           1       50.00 
+         27                          regs_flat[13]           0           0        0.00 
+         27                          regs_flat[12]           0           1       50.00 
+         27                         regs_flat[127]           0           0        0.00 
+         27                         regs_flat[126]           0           0        0.00 
+         27                         regs_flat[125]           0           0        0.00 
+         27                         regs_flat[124]           0           0        0.00 
+         27                         regs_flat[123]           0           0        0.00 
+         27                         regs_flat[122]           0           0        0.00 
+         27                         regs_flat[121]           0           0        0.00 
+         27                         regs_flat[120]           0           0        0.00 
+         27                          regs_flat[11]           0           0        0.00 
+         27                         regs_flat[119]           0           0        0.00 
+         27                         regs_flat[118]           0           0        0.00 
+         27                         regs_flat[117]           0           0        0.00 
+         27                         regs_flat[116]           0           0        0.00 
+         27                         regs_flat[115]           0           0        0.00 
+         27                         regs_flat[114]           0           0        0.00 
+         27                         regs_flat[113]           0           0        0.00 
+         27                         regs_flat[112]           0           0        0.00 
+         27                         regs_flat[111]           0           0        0.00 
+         27                         regs_flat[110]           0           0        0.00 
+         27                          regs_flat[10]           0           1       50.00 
+         27                         regs_flat[109]           0           0        0.00 
+         27                         regs_flat[108]           0           0        0.00 
+         27                         regs_flat[107]           0           0        0.00 
+         27                         regs_flat[106]           0           0        0.00 
+         27                         regs_flat[105]           0           0        0.00 
+         27                         regs_flat[104]           0           0        0.00 
+         27                         regs_flat[103]           0           0        0.00 
+         27                         regs_flat[102]           0           0        0.00 
+         27                         regs_flat[101]           0           0        0.00 
+         27                         regs_flat[100]           0           0        0.00 
+         27                           regs_flat[0]           0           0        0.00 
+
+Total Node Count     =        228 
+Toggled Node Count   =         73 
+Untoggled Node Count =        155 
+
+Toggle Coverage      =      46.27% (211 of 456 bins)
+
+
+ASSERTION RESULTS:
+--------------------------------------------------------------------
+Name                 File(Line)                   Failure      Pass 
+                                                  Count        Count
+--------------------------------------------------------------------
+/tb_axi_lite_slave_regs/axi_assert_i/a_reset_clears_responses
+                     UVM/assertions.sv(110)             0          1
+/tb_axi_lite_slave_regs/axi_assert_i/a_no_unknown_control
+                     UVM/assertions.sv(121)             0          1
+/tb_axi_lite_slave_regs/axi_assert_i/a_awaddr_stable_until_handshake
+                     UVM/assertions.sv(130)             0          0
+/tb_axi_lite_slave_regs/axi_assert_i/a_no_second_aw_before_write_response
+                     UVM/assertions.sv(135)             0          0
+/tb_axi_lite_slave_regs/axi_assert_i/a_wdata_stable_until_handshake
+                     UVM/assertions.sv(145)             0          0
+/tb_axi_lite_slave_regs/axi_assert_i/a_no_second_w_before_write_response
+                     UVM/assertions.sv(150)             0          0
+/tb_axi_lite_slave_regs/axi_assert_i/a_bvalid_only_after_aw_and_w
+                     UVM/assertions.sv(159)             0          1
+/tb_axi_lite_slave_regs/axi_assert_i/a_bresp_stable_until_handshake
+                     UVM/assertions.sv(164)             0          0
+/tb_axi_lite_slave_regs/axi_assert_i/a_bresp_legal_value
+                     UVM/assertions.sv(169)             0          1
+/tb_axi_lite_slave_regs/axi_assert_i/a_write_response_latency
+                     UVM/assertions.sv(174)             0          1
+/tb_axi_lite_slave_regs/axi_assert_i/a_invalid_write_gets_slverr
+                     UVM/assertions.sv(180)             0          1
+/tb_axi_lite_slave_regs/axi_assert_i/a_araddr_stable_until_handshake
+                     UVM/assertions.sv(189)             0          0
+/tb_axi_lite_slave_regs/axi_assert_i/a_no_second_ar_before_read_response
+                     UVM/assertions.sv(194)             0          1
+/tb_axi_lite_slave_regs/axi_assert_i/a_rvalid_only_after_ar
+                     UVM/assertions.sv(203)             0          1
+/tb_axi_lite_slave_regs/axi_assert_i/a_rdata_stable_until_handshake
+                     UVM/assertions.sv(209)             0          0
+/tb_axi_lite_slave_regs/axi_assert_i/a_rresp_legal_value
+                     UVM/assertions.sv(214)             0          1
+/tb_axi_lite_slave_regs/axi_assert_i/a_read_response_latency
+                     UVM/assertions.sv(219)             0          1
+/tb_axi_lite_slave_regs/axi_assert_i/a_invalid_read_gets_slverr
+                     UVM/assertions.sv(225)             0          1
+
+Total Coverage By File (code coverage only, filtered view): 58.67%
+
