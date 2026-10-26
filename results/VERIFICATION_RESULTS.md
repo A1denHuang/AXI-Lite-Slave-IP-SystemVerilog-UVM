@@ -21,11 +21,6 @@ Simulator: QuestaSim-64 10.7c (2018.08), UVM 1.2
 | Expression coverage | 100.00% | `rtl/axi_lite_slave_regs.v`: 22/22 FEC expression terms |
 | Toggle coverage | 69.30% | `rtl/axi_lite_slave_regs.v`: 298/430 toggle bins |
 
-There is no honest single portable “code coverage” number across simulators, so
-the DUT code metrics are reported separately. If a resume needs one concise
-number, use **92.72% statement coverage**, followed by the branch/condition/
-expression/toggle breakdown above.
-
 ## Regression matrix
 
 | Test | Runs | Seeds | Transfers per run | Result | Per-run functional coverage |
@@ -51,8 +46,7 @@ Total: 51 runs and 10,543 checked AXI-Lite read/write transfers.
   `rtl/axi_lite_slave_regs.v`. They intentionally exclude verification code and
   the uninstantiated `axi_lite_slave_project_regs.v` example.
 - Toggle coverage is lower because random data does not guarantee both edges on
-  every register/data bit. This is reported rather than hidden or averaged into
-  a misleading composite percentage.
+  every register/data bit.
 
 ## Reproduction
 

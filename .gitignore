@@ -6,3 +6,5 @@ transcript
 coverage_*.txt
 covhtmlreport/
 vsim_stacktrace.vstf
+modelsim.ini
+tr_db.log
