@@ -1,172 +1,132 @@
-# AXI-Lite-Slave-IP-SystemVerilog-UVM
-A parameterized AXI4-Lite Slave Register IP along with a complete verification environment built using SystemVerilog/UVM
+# AXI4-Lite Slave Register IP + UVM Verification
 
-## UVM Verification
+A parameterized AXI4-Lite slave register block in Verilog, with a UVM
+testbench, interface-level SVA checkers, and a seed-swept coverage regression
+run on QuestaSim 10.7c.
 
-This project now includes a UVM verification environment for `axi_lite_slave_regs`.
+## RTL
 
-Implemented verification blocks:
+### `rtl/axi_lite_slave_regs.v` (verified DUT)
 
-- Random/constrained-random tests
-- Functional coverage
-- Scoreboard/reference mirror
-- UVM agent/env/sequences/tests/top
-- Existing assertions are instantiated in both directed and UVM top-level benches
+Generic register file behind an AXI4-Lite slave port.
 
-Main UVM tests:
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `DATA_WIDTH` | 32 | Register / data bus width |
+| `ADDR_WIDTH` | 8 | Byte address width |
+| `REG_COUNT` | 8 | Number of registers |
 
-- `axi_lite_smoke_test`
-- `axi_lite_random_test`
-- `axi_lite_wstrb_test`
-- `axi_lite_error_test`
-- `axi_lite_backpressure_test`
+Behavior:
 
-## Verified regression results (2026-10-08)
+- AW and W may arrive in either order or in the same cycle. Each channel has a
+  one-entry hold register; the write executes once both are present and no
+  write response is pending.
+- One outstanding write and one outstanding read at a time (`AWREADY`/`WREADY`
+  drop while a beat is held or `BVALID` is high, `ARREADY` drops while `RVALID`
+  is high).
+- `WSTRB` byte enables are honored.
+- Unaligned or out-of-range addresses return `SLVERR`. Writes to them change
+  nothing; reads return all zeros.
+- Synchronous active-low reset clears all registers.
+- All registers are also exported on `regs_flat` for the surrounding logic.
 
-The checked-in metrics below were produced with QuestaSim 10.7c, not estimated
-from the test source. The formal regression contains five UVM tests, ten unique
-seeds per test, plus the standalone directed bench.
+### `rtl/axi_lite_slave_project_regs.v` (example, not verified)
 
-| Metric | Verified result |
+A fixed register map showing how the generic block can be specialized:
+
+| Offset | Name | Access | Description |
+| --- | --- | --- | --- |
+| 0x00 | CTRL | RW | Control |
+| 0x04 | STATUS | RO | Reflects `status_i` |
+| 0x08 | INTR_EN | RW | Interrupt enable |
+| 0x0C | INTR_STATUS | RW1C | Set by `intr_status_set_i`, cleared by writing 1 |
+| 0x10 | VERSION | RO | `VERSION_VALUE` parameter |
+
+## Verification
+
+```
+UVM/
+  axi_lite_if.sv, axi_lite_pkg.sv
+  axi_lite_agent/   item, sequencer, driver, monitor, agent
+  env/              env, scoreboard (register mirror), coverage
+  tests/            sequences and tests
+  assertions.sv     SVA checker module
+  top_tb_uvm.sv     UVM top
+sim/
+  tb_axi_lite_slave_regs.v   standalone directed bench
+  *.do, run_regression.ps1   Questa scripts
+results/                     archived regression output
+```
+
+- **Driver** inserts random `BREADY`/`RREADY` delays (up to `max_ready_delay`).
+- **Scoreboard** keeps a mirror of the registers, applies `WSTRB` on writes,
+  and checks read data and the expected `OKAY`/`SLVERR` response.
+- **Coverage** (`axi_lite_cg`): command, address (each register, unaligned,
+  out of range), response, `WSTRB` pattern, and crosses of
+  command x address kind x response and address kind x `WSTRB`.
+- **Assertions** (`UVM/assertions.sv`) watch only the AXI ports: signal
+  stability while `VALID` is waiting for `READY`, no response without a
+  request, legal response codes, response latency bound, and `SLVERR` on
+  invalid addresses. They are instantiated in both the directed and UVM tops.
+  `UVM/assertions_protocol说明.md` explains each property (in Chinese).
+
+| Test | Focus |
+| --- | --- |
+| `axi_lite_smoke_test` | Basic write/read to each register |
+| `axi_lite_random_test` | Constrained-random mix of reads and writes |
+| `axi_lite_wstrb_test` | Partial writes with different byte enables |
+| `axi_lite_error_test` | Unaligned and out-of-range accesses |
+| `axi_lite_backpressure_test` | Random traffic with longer `BREADY`/`RREADY` stalls |
+
+## Results
+
+Regression on 2026-10-08: 5 UVM tests x 10 seeds (1001-1050) plus the directed
+bench, 51/51 passing, 10,543 transfers checked, no UVM errors and no assertion
+failures.
+
+| Metric | Result |
 | --- | ---: |
-| Named test scenarios | 6 (5 UVM + 1 directed) |
-| UVM regression runs | 50/50 PASS |
-| Directed bench runs | 1/1 PASS |
-| Unique UVM seeds | 50 (`1001` through `1050`) |
-| AXI-Lite transfers checked | 10,543 |
-| UVM errors / fatals | 0 / 0 |
-| Assertion failures | 0 |
-| Merged functional coverage | 82.14% |
-| DUT statement coverage | 92.72% |
-| DUT branch coverage | 100.00% |
-| DUT condition coverage | 100.00% |
-| DUT expression coverage | 100.00% |
-| DUT toggle coverage | 69.30% |
+| Functional coverage (merged `axi_lite_cg`) | 82.14% |
+| Statement | 92.72% |
+| Branch | 100% |
+| Condition | 100% |
+| Expression | 100% |
+| Toggle | 69.30% |
 
-Code coverage is reported for the instantiated reusable DUT
-`rtl/axi_lite_slave_regs.v`; testbench/UVM code and the uninstantiated
-project-specific example are excluded from the headline DUT metric. Functional
-coverage is the merged `axi_lite_cg` result. Remaining functional gaps are six
-WSTRB values not generated by the current constraint and protocol-impossible
-response cross bins. See `results/VERIFICATION_RESULTS.md` for the exact scope,
-seed matrix, reproduction commands, and evidence files.
+Code coverage is for `rtl/axi_lite_slave_regs.v` only. Per-test numbers, the
+seed matrix and logs are in `results/VERIFICATION_RESULTS.md` and
+`results/logs/`.
 
-Run examples:
+## Running
+
+Paths assume QuestaSim installed under `D:\Questasim`; adjust as needed.
 
 ```sh
-D:\Questasim\win64\vsim.exe -do sim/run_uvm.do
+# one UVM test (default test set in run_uvm.do)
+vsim -do sim/run_uvm.do
+
+# pick a test and transaction count
+vsim -c -coverage top_tb +UVM_TESTNAME=axi_lite_random_test +NUM_TXNS=1000 -do "run -all; quit -f"
+
+# directed bench
+vsim -do sim/run_directed.do
 ```
 
-For a different test:
-
-```sh
-set UVM_TESTNAME=axi_lite_random_test
-D:\Questasim\win64\vsim.exe -do sim/run_uvm.do
-```
-
-For random test length:
-
-```sh
-D:\Questasim\win64\vsim.exe -c -nodpiexports -coverage top_tb +UVM_TESTNAME=axi_lite_random_test +NUM_TXNS=1000 -do "run -all; quit -f"
-```
-
-Run the reproducible 50-run regression from PowerShell:
+Full regression with coverage merge (PowerShell):
 
 ```powershell
 pwsh -File sim/run_regression.ps1 -SeedsPerTest 10 -RandomTransactions 500
 ```
 
-The directed smoke bench is still available:
+Intel FPGA ModelSim ASE can compile the environment but cannot run the
+randomization and covergroups; a full QuestaSim license is needed.
 
-```sh
-D:\Questasim\win64\vsim.exe -do sim/run_directed.do
-```
+## Known gaps
 
-Note: Intel FPGA ModelSim ASE can compile this UVM environment, but it may not
-run randomized classes and covergroups because those require a full QuestaSim
-verification license.
-
-## Assertions
-
-- `UVM/assertions.sv`: AXI4-Lite interface-level SystemVerilog assertions.
-- `UVM/assertions_protocol说明.md`: 中文协议说明，解释每个 assertion 检查的协议点。
-
-Questa/ModelSim 编译示例：
-
-```sh
-vlog -sv rtl/axi_lite_slave_regs.v UVM/assertions.sv sim/tb_axi_lite_slave_regs.v
-```
-
-## 1. 项目整体架构
-
-该项目提供了一套**参数化、可复用的 AXI4-Lite Slave Register IP**，用于快速为 SoC/ASIC 项目生成寄存器映射接口。主要包含两个核心模块：
-
-- **axi_lite_slave_regs.v**：**通用参数化寄存器 IP**（推荐在大多数项目中使用）
-- **axi_lite_slave_project_regs.v**：**项目特定（硬编码）寄存器 IP**（针对特定寄存器定义的示例实现）
-
-配套提供了一个**基础验证环境**（Testbench），用于验证 AXI4-Lite 寄存器访问的正确性，包括对齐检查、部分字节写（STRB）、错误响应（SLVERR）等功能。
-
-## 2.文件概览
-
-#### **(1) axi_lite_slave_regs.v** —— 通用参数化 AXI4-Lite Slave Register IP
-
-这是项目的**核心可复用组件**。
-
-**主要特性：**
-
-- **参数化设计**：
-  - DATA_WIDTH：默认 32bit，可扩展
-  - ADDR_WIDTH：地址宽度，默认 8bit（支持 256 字节空间）
-  - REG_COUNT：寄存器数量（每个寄存器占 DATA_WIDTH）
-- **接口**：
-  - 标准 AXI4-Lite Slave 接口（AW、W、B、AR、R）
-  - 输出 regs_flat：所有寄存器平铺输出，便于连接到上层模块
-- **关键功能**：
-  - 支持**字节使能**（WSTRB）部分写入
-  - 地址对齐检查（必须 4 字节对齐）
-  - 非法地址返回 SLVERR
-  - 握手机制（支持 AW/W 分离到达）
-  - 复位后所有寄存器清零
-- **实现亮点**：
-  - 使用 write_fire 信号统一处理写事务
-  - 地址映射采用 word_addr（自动除以 4）
-  - 使用 generate 块生成 regs_flat 输出
-
-#### **(2) axi_lite_slave_project_regs.v** —— 项目专用寄存器 IP
-
-这是一个**具体项目**的寄存器映射示例，展示了如何**基于通用模板定制特殊寄存器行为**。
-
-**寄存器映射（偏移地址）：**
-
-| 地址 | 名称        | 类型 | 功能描述                                             |
-| ---- | ----------- | ---- | ---------------------------------------------------- |
-| 0x00 | CTRL        | RW   | 控制寄存器                                           |
-| 0x04 | STATUS      | RO   | 状态输入（来自外部 status_i）                        |
-| 0x08 | INTR_EN     | RW   | 中断使能                                             |
-| 0x0C | INTR_STATUS | RW1C | 中断状态（支持外部 intr_status_set_i 置位，写1清零） |
-| 0x10 | VERSION     | RO   | 只读版本号（parameter VERSION_VALUE）                |
-
-**特色功能**：
-
-- 中断状态寄存器实现 **RW1C + 外部置位** 逻辑（常见中断控制器设计）
-- 固定地址映射 + is_valid_addr 函数
-- 同样支持字节写和错误响应
-
-#### **(3) tb_axi_lite_slave_regs.v** —— 验证环境（Testbench）
-
-针对**通用寄存器 IP** 的基础定向测试。
-
-**测试内容覆盖：**
-
-- 正常单字写读
-- **部分字节写入**（WSTRB = 4'b1100）
-- **非法地址**访问（返回 SLVERR）
-- **非对齐地址**访问（返回 SLVERR）
-- 基本握手时序验证
-
-**测试流程**：
-
-1. 复位
-2. 正常写读 0x00、0x04、0x08
-3. 部分字节写测试
-4. 错误响应测试（地址 0x20、0x01）
+- Functional coverage stops at 82% for two reasons: the `WSTRB` constraint never
+  generates `6`, `7`, `9`, `B`, `D`, `E`, and the command x address kind x
+  response cross still contains impossible bins (for example an invalid
+  address returning `OKAY`) that should be marked `illegal_bins`.
+- Toggle coverage is low because random data does not drive both edges on every
+  register bit.
+- `axi_lite_slave_project_regs.v` has no testbench yet.
