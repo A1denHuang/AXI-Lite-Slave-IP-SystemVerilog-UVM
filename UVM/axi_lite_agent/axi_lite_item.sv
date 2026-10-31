@@ -17,9 +17,12 @@ class axi_lite_item extends uvm_sequence_item;
 
     constraint c_addr_mix {
         addr dist {
-            [8'h00:8'h0F] := 70,
-            [8'h10:8'h1F] := 15,
-            [8'h20:8'hFF] := 15
+            // :/ assigns 70/15/15 to the three ranges as wholes.  Using :=
+            // would apply the weight to every value, making 0x20-0xFF about
+            // 71.2% of samples and the four legal addresses only about 5.9%.
+            [8'h00:8'h0F] :/ 70,
+            [8'h10:8'h1F] :/ 15,
+            [8'h20:8'hFF] :/ 15
         };
     }
 
