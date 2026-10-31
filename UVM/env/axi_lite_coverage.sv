@@ -47,7 +47,16 @@ class axi_lite_coverage extends uvm_component;
             bins full       = {4'hF};
         }
 
-        cx_cmd_addr_resp: cross cp_cmd, cp_addr_kind, cp_resp;
+        cx_cmd_addr_resp: cross cp_cmd, cp_addr_kind, cp_resp {
+            // These combinations violate the DUT contract.  Marking them
+            // illegal removes unreachable goals and also reports an error if
+            // the DUT or monitor ever produces one of these responses.
+            illegal_bins legal_slverr =
+                binsof(cp_addr_kind.legal) && binsof(cp_resp.slverr);
+            illegal_bins invalid_okay =
+                (binsof(cp_addr_kind.unaligned) ||
+                 binsof(cp_addr_kind.out_of_rng)) && binsof(cp_resp.okay);
+        }
         cx_write_addr_wstrb: cross cp_addr_kind, cp_wstrb iff (cov_cmd == AXI_WRITE);
     endgroup
 

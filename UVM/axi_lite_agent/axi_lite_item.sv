@@ -12,7 +12,9 @@ class axi_lite_item extends uvm_sequence_item;
 
     constraint c_wstrb {
         wstrb dist {4'h0 := 1, 4'h1 := 2, 4'h2 := 2, 4'h4 := 2, 4'h8 := 2,
-                    4'h3 := 2, 4'h5 := 1, 4'hA := 1, 4'hC := 2, 4'hF := 8};
+                    4'h3 := 2, 4'h5 := 1, 4'h6 := 1, 4'h7 := 1,
+                    4'h9 := 1, 4'hA := 1, 4'hB := 1, 4'hC := 2,
+                    4'hD := 1, 4'hE := 1, 4'hF := 8};
     }
 
     constraint c_addr_mix {
