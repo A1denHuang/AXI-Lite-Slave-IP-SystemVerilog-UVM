@@ -25,7 +25,7 @@ Reading D:/Questasim/tcl/vsim/pref.tcl
 #     UVM/assertions.sv \
 #     UVM/top_tb_uvm.sv
 # QuestaSim-64 vlog 10.7c Compiler 2018.08 Aug 18 2018
-# Start time: 12:55:10 on Oct 08,2026
+# Start time: 19:31:03 on Oct 31,2026
 # vlog -sv "+cover=bcesft" "+define+UVM_NO_DPI" "+incdir+D:/Questasim/verilog_src/uvm-1.2/src" "+incdir+UVM" D:/Questasim/verilog_src/uvm-1.2/src/uvm_pkg.sv UVM/axi_lite_if.sv UVM/axi_lite_pkg.sv rtl/axi_lite_slave_regs.v rtl/axi_lite_slave_project_regs.v UVM/assertions.sv UVM/top_tb_uvm.sv 
 # -- Compiling package uvm_pkg (uvm-1.2 Built-in)
 # -- Compiling interface axi_lite_if
@@ -40,7 +40,7 @@ Reading D:/Questasim/tcl/vsim/pref.tcl
 # Top level modules:
 # 	axi_lite_slave_project_regs
 # 	top_tb
-# End time: 12:55:10 on Oct 08,2026, Elapsed time: 0:00:00
+# End time: 19:31:04 on Oct 31,2026, Elapsed time: 0:00:01
 # Errors: 0, Warnings: 0
 # 
 # quit -f

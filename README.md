@@ -74,19 +74,19 @@ results/                     archived regression output
 | --- | --- |
 | `axi_lite_smoke_test` | Basic write/read to each register |
 | `axi_lite_random_test` | Constrained-random mix of reads and writes |
-| `axi_lite_wstrb_test` | Partial writes with different byte enables |
+| `axi_lite_wstrb_test` | All 16 byte enables plus directed out-of-range cross closure |
 | `axi_lite_error_test` | Unaligned and out-of-range accesses |
 | `axi_lite_backpressure_test` | Random traffic with longer `BREADY`/`RREADY` stalls |
 
 ## Results
 
-Regression on 2026-10-08: 5 UVM tests x 10 seeds (1001-1050) plus the directed
-bench, 51/51 passing, 10,543 transfers checked, no UVM errors and no assertion
+Regression on 2026-10-31: 5 UVM tests x 10 seeds (1001-1050) plus the directed
+bench, 51/51 passing, 6,703 transfers checked, no UVM errors and no assertion
 failures.
 
 | Metric | Result |
 | --- | ---: |
-| Functional coverage (merged `axi_lite_cg`) | 82.14% |
+| Functional coverage (merged `axi_lite_cg`) | 100.00% |
 | Statement | 92.72% |
 | Branch | 100% |
 | Condition | 100% |
@@ -96,6 +96,22 @@ failures.
 Code coverage is for `rtl/axi_lite_slave_regs.v` only. Per-test numbers, the
 seed matrix and logs are in `results/VERIFICATION_RESULTS.md` and
 `results/logs/`.
+
+The functional-coverage closure is deliberate rather than a longer random run:
+
+- `c_wstrb` generates all 16 `WSTRB` values.
+- `axi_lite_wstrb_sequence` enumerates all 16 values at a legal address and
+  explicitly drives `0`, `8`, `9`, and `A` at out-of-range address `0x20` to
+  close the four previously missing reachable cross bins.
+- Protocol-violating response combinations, such as an invalid address with an
+  `OKAY` response, are `illegal_bins`. They are excluded from the coverage goal
+  and report an error if ever sampled.
+
+An individual random seed can still report less than 100% because a finite
+sample may miss reachable cross combinations. The 100.00% result above is the
+merged 50-seed regression result with the directed WSTRB closure sequence. It
+does not mean the verification plan is exhaustive, and it is separate from RTL
+statement/branch/condition/expression/toggle code coverage.
 
 ## Running
 
@@ -123,10 +139,9 @@ randomization and covergroups; a full QuestaSim license is needed.
 
 ## Known gaps
 
-- Functional coverage stops at 82% for two reasons: the `WSTRB` constraint never
-  generates `6`, `7`, `9`, `B`, `D`, `E`, and the command x address kind x
-  response cross still contains impossible bins (for example an invalid
-  address returning `OKAY`) that should be marked `illegal_bins`.
+- The current `axi_lite_cg` reaches 100%, but it covers the implemented plan,
+  not every possible AXI4-Lite behavior. Reset during traffic, multiple
+  parameter configurations, and broader timing crosses are not covered.
 - Toggle coverage is low because random data does not drive both edges on every
   register bit.
 - `axi_lite_slave_project_regs.v` has no testbench yet.

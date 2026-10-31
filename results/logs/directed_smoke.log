@@ -20,7 +20,7 @@ Reading D:/Questasim/tcl/vsim/pref.tcl
 #     UVM/assertions.sv \
 #     sim/tb_axi_lite_slave_regs.v
 # QuestaSim-64 vlog 10.7c Compiler 2018.08 Aug 18 2018
-# Start time: 13:00:18 on Oct 08,2026
+# Start time: 19:34:10 on Oct 31,2026
 # vlog -work work_directed -sv "+cover=bcesft" rtl/axi_lite_slave_regs.v rtl/axi_lite_slave_project_regs.v UVM/assertions.sv sim/tb_axi_lite_slave_regs.v 
 # -- Compiling module axi_lite_slave_regs
 # -- Compiling module axi_lite_slave_project_regs
@@ -30,12 +30,12 @@ Reading D:/Questasim/tcl/vsim/pref.tcl
 # Top level modules:
 # 	axi_lite_slave_project_regs
 # 	tb_axi_lite_slave_regs
-# End time: 13:00:18 on Oct 08,2026, Elapsed time: 0:00:00
+# End time: 19:34:10 on Oct 31,2026, Elapsed time: 0:00:00
 # Errors: 0, Warnings: 0
 # 
 # vsim -c -lib work_directed -coverage -onfinish stop tb_axi_lite_slave_regs
 # vsim -c -lib work_directed -coverage -onfinish stop tb_axi_lite_slave_regs 
-# Start time: 13:00:18 on Oct 08,2026
+# Start time: 19:34:10 on Oct 31,2026
 # ** Note: (vsim-3812) Design is being optimized...
 # //  Questa Sim-64
 # //  Version 10.7c win64 Aug 18 2018
@@ -62,5 +62,5 @@ Reading D:/Questasim/tcl/vsim/pref.tcl
 # coverage save "results/directed_smoke.ucdb"
 # coverage report -details -file "results/directed_smoke_coverage.txt"
 # quit -f
-# End time: 13:00:20 on Oct 08,2026, Elapsed time: 0:00:02
+# End time: 19:34:11 on Oct 31,2026, Elapsed time: 0:00:01
 # Errors: 0, Warnings: 0

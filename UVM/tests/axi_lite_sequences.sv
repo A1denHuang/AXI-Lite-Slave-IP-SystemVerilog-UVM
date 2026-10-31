@@ -86,10 +86,19 @@ class axi_lite_wstrb_sequence extends axi_lite_base_sequence;
     endfunction
 
     task body();
-        bit [3:0] patterns[$] = '{4'h0, 4'h1, 4'h2, 4'h4, 4'h8, 4'h3, 4'h5, 4'hA, 4'hC, 4'hF};
+        bit [3:0] patterns[$] = '{4'h0, 4'h1, 4'h2, 4'h3, 4'h4, 4'h5, 4'h6, 4'h7,
+                                  4'h8, 4'h9, 4'hA, 4'hB, 4'hC, 4'hD, 4'hE, 4'hF};
+        bit [3:0] out_of_range_patterns[$] = '{4'h0, 4'h8, 4'h9, 4'hA};
+
         foreach (patterns[i]) begin
             send_write(8'h00, 32'h1111_0000 + i, patterns[i]);
             send_read(8'h00);
+        end
+
+        // Deterministically close the four reachable out-of-range x WSTRB
+        // cross bins that a finite random run can miss.
+        foreach (out_of_range_patterns[i]) begin
+            send_write(8'h20, 32'hBAD0_1000 + i, out_of_range_patterns[i]);
         end
     endtask
 endclass

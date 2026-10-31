@@ -3,7 +3,7 @@ Reading D:/Questasim/tcl/vsim/pref.tcl
 # 10.7c
 
 # vsim -c -nodpiexports -coverage -onfinish stop -sv_seed 1001 top_tb "+UVM_TESTNAME=axi_lite_smoke_test" "+NUM_TXNS=500" "+UVM_NO_RELNOTES" -do "run -all; coverage save {results/axi_lite_smoke_test_seed_1001.ucdb}; quit -f" 
-# Start time: 12:55:11 on Oct 08,2026
+# Start time: 19:31:05 on Oct 31,2026
 # ** Note: (vsim-3812) Design is being optimized...
 # //  Questa Sim-64
 # //  Version 10.7c win64 Aug 18 2018
@@ -54,7 +54,7 @@ Reading D:/Questasim/tcl/vsim/pref.tcl
 # UVM_INFO @ 0: reporter [RNTST] Running test axi_lite_smoke_test...
 # UVM_INFO D:/Questasim/verilog_src/uvm-1.2/src/base/uvm_traversal.svh(279) @ 0: reporter [UVM/COMP/NAMECHECK] This implementation of the component name checks requires DPI to be enabled
 # UVM_INFO D:/Questasim/verilog_src/uvm-1.2/src/base/uvm_objection.svh(1270) @ 775000: reporter [TEST_DONE] 'run' phase is ready to proceed to the 'extract' phase
-# UVM_INFO UVM/env/axi_lite_coverage.sv(71) @ 775000: uvm_test_top.env.coverage [COV] AXI-Lite functional coverage: 57.18%
+# UVM_INFO UVM/env/axi_lite_coverage.sv(80) @ 775000: uvm_test_top.env.coverage [COV] AXI-Lite functional coverage: 64.32%
 # UVM_INFO D:/Questasim/verilog_src/uvm-1.2/src/base/uvm_report_server.svh(847) @ 775000: reporter [UVM/REPORT/SERVER] 
 # --- UVM Report Summary ---
 # 
@@ -77,5 +77,5 @@ Reading D:/Questasim/tcl/vsim/pref.tcl
 # Stopped at D:/Questasim/verilog_src/uvm-1.2/src/base/uvm_root.svh line 517
 #  coverage save {results/axi_lite_smoke_test_seed_1001.ucdb}
 #  quit -f
-# End time: 12:55:15 on Oct 08,2026, Elapsed time: 0:00:04
+# End time: 19:31:09 on Oct 31,2026, Elapsed time: 0:00:04
 # Errors: 0, Warnings: 0
