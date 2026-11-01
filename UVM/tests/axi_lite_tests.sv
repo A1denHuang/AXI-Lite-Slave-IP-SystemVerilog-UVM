@@ -93,4 +93,18 @@ class axi_lite_backpressure_test extends axi_lite_base_test;
     endtask
 endclass
 
+class axi_lite_learning_test extends axi_lite_base_test;
+    `uvm_component_utils(axi_lite_learning_test)
+
+    function new(string name, uvm_component parent);
+        super.new(name, parent);
+    endfunction
+
+    task run_phase(uvm_phase phase);
+        axi_lite_learning_sequence seq =
+            axi_lite_learning_sequence::type_id::create("seq");
+        run_selected_sequence(phase, seq);
+    endtask
+endclass
+
 `endif

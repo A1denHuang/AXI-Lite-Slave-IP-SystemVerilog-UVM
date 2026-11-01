@@ -10,6 +10,16 @@ class axi_lite_item extends uvm_sequence_item;
     bit [AXI_DATA_WIDTH-1:0] rdata;
     bit [1:0]                resp;
 
+    // Optional deterministic timing controls used by learning/directed
+    // sequences.  Normal randomized tests leave use_explicit_delays clear,
+    // preserving the driver's randomized backpressure behavior.
+    bit          use_explicit_delays;
+    int unsigned aw_delay;
+    int unsigned w_delay;
+    int unsigned bready_delay;
+    int unsigned ar_delay;
+    int unsigned rready_delay;
+
     constraint c_wstrb {
         wstrb dist {4'h0 := 1, 4'h1 := 2, 4'h2 := 2, 4'h4 := 2, 4'h8 := 2,
                     4'h3 := 2, 4'h5 := 1, 4'h6 := 1, 4'h7 := 1,
@@ -35,6 +45,12 @@ class axi_lite_item extends uvm_sequence_item;
         `uvm_field_int(wstrb, UVM_HEX)
         `uvm_field_int(rdata, UVM_HEX)
         `uvm_field_int(resp,  UVM_BIN)
+        `uvm_field_int(use_explicit_delays, UVM_DEFAULT)
+        `uvm_field_int(aw_delay, UVM_DEC)
+        `uvm_field_int(w_delay, UVM_DEC)
+        `uvm_field_int(bready_delay, UVM_DEC)
+        `uvm_field_int(ar_delay, UVM_DEC)
+        `uvm_field_int(rready_delay, UVM_DEC)
     `uvm_object_utils_end
 
     function new(string name = "axi_lite_item");

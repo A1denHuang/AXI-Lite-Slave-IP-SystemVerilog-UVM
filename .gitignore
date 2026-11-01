@@ -1,10 +1,12 @@
-work/
-work_directed/
+results/
+work*/
+modelsim.ini
 transcript
 *.wlf
 *.vstf
+*.ucdb
+*.log
+*.mpf
+*.cr.mti
 coverage_*.txt
 covhtmlreport/
-vsim_stacktrace.vstf
-modelsim.ini
-tr_db.log

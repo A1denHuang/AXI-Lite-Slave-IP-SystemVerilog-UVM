@@ -1,6 +1,7 @@
 param(
-    [int]$SeedsPerTest = 10,
-    [int]$RandomTransactions = 500
+    [ValidateRange(1, 1000)][int]$SeedsPerTest = 10,
+    [ValidateRange(1, 1000000)][int]$RandomTransactions = 500,
+    [ValidateRange(1, 1000000)][int]$SimulationTimeoutUs = 10000
 )
 
 $ErrorActionPreference = 'Stop'
@@ -9,6 +10,12 @@ $Vsim = 'D:\Questasim\win64\vsim.exe'
 $Vcover = 'D:\Questasim\win64\vcover.exe'
 $ResultsDir = Join-Path $ProjectRoot 'results'
 $LogsDir = Join-Path $ResultsDir 'logs'
+$PreviousTimeout = $env:AXI_SIM_TIMEOUT_US
+
+function Test-SimulatorErrors([string]$LogText) {
+    # SVA $error is independent of the UVM report server.
+    return $LogText -match '(?m)^#\s*\*\*\s+(Error|Fatal|Failure):|^#\s*Errors:\s*[1-9]'
+}
 
 if (-not (Test-Path -LiteralPath $Vsim)) {
     throw "QuestaSim not found: $Vsim"
@@ -20,7 +27,7 @@ Push-Location $ProjectRoot
 try {
     $compileLog = Join-Path $LogsDir 'compile.log'
     & $Vsim -c -do 'sim/compile_coverage.do' *> $compileLog
-    if ($LASTEXITCODE -ne 0 -or (Select-String -LiteralPath $compileLog -Pattern '^# Errors: [1-9]' -Quiet)) {
+    if ($LASTEXITCODE -ne 0 -or (Test-SimulatorErrors (Get-Content -Raw -LiteralPath $compileLog))) {
         throw "Coverage compilation failed. See $compileLog"
     }
 
@@ -29,7 +36,8 @@ try {
         'axi_lite_random_test',
         'axi_lite_wstrb_test',
         'axi_lite_error_test',
-        'axi_lite_backpressure_test'
+        'axi_lite_backpressure_test',
+        'axi_lite_learning_test'
     )
 
     $rows = [System.Collections.Generic.List[object]]::new()
@@ -41,7 +49,9 @@ try {
             $stem = "${test}_seed_${seed}"
             $ucdb = "results/${stem}.ucdb"
             $log = Join-Path $LogsDir "${stem}.log"
-            $do = "run -all; coverage save {$ucdb}; quit -f"
+            # A stopped/timed-out run must not reuse a database from a prior run.
+            if (Test-Path -LiteralPath $ucdb) { Remove-Item -LiteralPath $ucdb }
+            $do = "run $SimulationTimeoutUs us; coverage save {$ucdb}; quit -f"
 
             $vsimArgs = @(
                 '-c', '-nodpiexports', '-coverage', '-onfinish', 'stop',
@@ -50,18 +60,34 @@ try {
                 '-do', $do
             )
             & $Vsim @vsimArgs *> $log
+            $simExitCode = $LASTEXITCODE
 
             $text = Get-Content -Raw -LiteralPath $log
             $uvmError = [regex]::Match($text, 'UVM_ERROR\s*:\s*(\d+)').Groups[1].Value
             $uvmFatal = [regex]::Match($text, 'UVM_FATAL\s*:\s*(\d+)').Groups[1].Value
             $functional = [regex]::Match($text, 'AXI-Lite functional coverage:\s*([0-9.]+)%').Groups[1].Value
-            $passed = ($LASTEXITCODE -eq 0 -and $uvmError -eq '0' -and $uvmFatal -eq '0' -and (Test-Path -LiteralPath $ucdb))
+            $observedCount = [regex]::Match($text, 'CHECKED_TRANSFERS=(\d+)').Groups[1].Value
+
+            $transactionCount = switch ($test) {
+                'axi_lite_smoke_test'        { 13 }
+                'axi_lite_random_test'       { $RandomTransactions }
+                'axi_lite_wstrb_test'        { 36 }
+                'axi_lite_error_test'        { 20 }
+                'axi_lite_backpressure_test' { $RandomTransactions }
+                'axi_lite_learning_test'     { 29 }
+            }
+
+            $passed = ($simExitCode -eq 0 -and $uvmError -eq '0' -and $uvmFatal -eq '0' -and
+                -not (Test-SimulatorErrors $text) -and $functional -ne '' -and
+                $text.Contains('[TEST_DONE]') -and $observedCount -ne '' -and
+                [int]$observedCount -eq $transactionCount -and (Test-Path -LiteralPath $ucdb))
 
             $rows.Add([pscustomobject]@{
                 Run = $runIndex
                 Test = $test
                 Seed = $seed
-                Transactions = if ($test -eq 'axi_lite_random_test') { $RandomTransactions } elseif ($test -eq 'axi_lite_backpressure_test') { 100 } else { 'directed' }
+                Transactions = $observedCount
+                ExpectedTransactions = $transactionCount
                 FunctionalCoveragePercent = $functional
                 UvmErrors = $uvmError
                 UvmFatals = $uvmFatal
@@ -91,8 +117,13 @@ try {
     }
 
     $directedLog = Join-Path $LogsDir 'directed_smoke.log'
+    $directedUcdb = Join-Path $ResultsDir 'directed_smoke.ucdb'
+    if (Test-Path -LiteralPath $directedUcdb) { Remove-Item -LiteralPath $directedUcdb }
+    $env:AXI_SIM_TIMEOUT_US = "$SimulationTimeoutUs"
     & $Vsim -c -do 'sim/run_directed_coverage.do' *> $directedLog
-    $directedPassed = ($LASTEXITCODE -eq 0 -and (Select-String -LiteralPath $directedLog -Pattern '^# PASS$' -Quiet))
+    $directedText = Get-Content -Raw -LiteralPath $directedLog
+    $directedPassed = ($LASTEXITCODE -eq 0 -and $directedText -match '(?m)^# PASS\r?$' -and
+        -not (Test-SimulatorErrors $directedText) -and (Test-Path -LiteralPath $directedUcdb))
     if (-not $directedPassed) {
         throw "Directed smoke test failed. See $directedLog"
     }
@@ -115,5 +146,6 @@ try {
     Write-Output "REGRESSION_COMPLETE runs=$totalRuns pass=$totalPass fail=$($totalRuns - $totalPass)"
 }
 finally {
+    $env:AXI_SIM_TIMEOUT_US = $PreviousTimeout
     Pop-Location
 }

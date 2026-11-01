@@ -14,7 +14,11 @@ vlog -work work_directed -sv +cover=bcesft \
     sim/tb_axi_lite_slave_regs.v
 
 vsim -c -lib work_directed -coverage -onfinish stop tb_axi_lite_slave_regs
-run -all
+set timeout_us 10000
+if {[info exists ::env(AXI_SIM_TIMEOUT_US)]} {
+    set timeout_us $::env(AXI_SIM_TIMEOUT_US)
+}
+run $timeout_us us
 coverage save "results/directed_smoke.ucdb"
 coverage report -details -file "results/directed_smoke_coverage.txt"
 quit -f

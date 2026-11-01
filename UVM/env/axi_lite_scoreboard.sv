@@ -6,6 +6,7 @@ class axi_lite_scoreboard extends uvm_component;
 
     uvm_analysis_imp #(axi_lite_item, axi_lite_scoreboard) analysis_export;
     bit [AXI_DATA_WIDTH-1:0] mirror [AXI_REG_COUNT];
+    int unsigned checked_transfers = 0;
 
     function new(string name, uvm_component parent);
         super.new(name, parent);
@@ -28,6 +29,7 @@ class axi_lite_scoreboard extends uvm_component;
         bit [AXI_DATA_WIDTH-1:0] expected_data;
 
         word_addr = tr.addr >> 2;
+        checked_transfers++;
 
         if (tr.cmd == AXI_WRITE) begin
             if (tr.is_legal_addr()) begin
@@ -65,6 +67,11 @@ class axi_lite_scoreboard extends uvm_component;
                 end
             end
         end
+    endfunction
+
+    function void report_phase(uvm_phase phase);
+        super.report_phase(phase);
+        `uvm_info("SCB_COUNT", $sformatf("CHECKED_TRANSFERS=%0d", checked_transfers), UVM_LOW)
     endfunction
 endclass
 

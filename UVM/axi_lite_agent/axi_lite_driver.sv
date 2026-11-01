@@ -52,9 +52,15 @@ class axi_lite_driver extends uvm_driver #(axi_lite_item);
         int unsigned w_delay;
         int unsigned b_delay;
 
-        aw_delay = $urandom_range(0, max_ready_delay);
-        w_delay  = $urandom_range(0, max_ready_delay);
-        b_delay  = $urandom_range(0, max_ready_delay);
+        if (tr.use_explicit_delays) begin
+            aw_delay = tr.aw_delay;
+            w_delay  = tr.w_delay;
+            b_delay  = tr.bready_delay;
+        end else begin
+            aw_delay = $urandom_range(0, max_ready_delay);
+            w_delay  = $urandom_range(0, max_ready_delay);
+            b_delay  = $urandom_range(0, max_ready_delay);
+        end
 
         fork
             begin
@@ -86,8 +92,13 @@ class axi_lite_driver extends uvm_driver #(axi_lite_item);
         int unsigned ar_delay;
         int unsigned r_delay;
 
-        ar_delay = $urandom_range(0, max_ready_delay);
-        r_delay  = $urandom_range(0, max_ready_delay);
+        if (tr.use_explicit_delays) begin
+            ar_delay = tr.ar_delay;
+            r_delay  = tr.rready_delay;
+        end else begin
+            ar_delay = $urandom_range(0, max_ready_delay);
+            r_delay  = $urandom_range(0, max_ready_delay);
+        end
 
         repeat (ar_delay) @(posedge vif.aclk);
         vif.araddr  <= tr.addr;
