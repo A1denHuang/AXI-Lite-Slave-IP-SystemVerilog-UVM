@@ -1,16 +1,19 @@
 param(
     [ValidateRange(1, 1000)][int]$SeedsPerTest = 10,
     [ValidateRange(1, 1000000)][int]$RandomTransactions = 500,
-    [ValidateRange(1, 1000000)][int]$SimulationTimeoutUs = 10000
+    [ValidateRange(1, 1000000)][int]$SimulationTimeoutUs = 10000,
+    [string]$OutputDirectory = 'results/v1.1'
 )
 
 $ErrorActionPreference = 'Stop'
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $Vsim = 'D:\Questasim\win64\vsim.exe'
 $Vcover = 'D:\Questasim\win64\vcover.exe'
-$ResultsDir = Join-Path $ProjectRoot 'results'
+$ResultsDir = Join-Path $ProjectRoot $OutputDirectory
 $LogsDir = Join-Path $ResultsDir 'logs'
 $PreviousTimeout = $env:AXI_SIM_TIMEOUT_US
+$PreviousResults = $env:AXI_RESULTS_DIR
+$env:AXI_RESULTS_DIR = $ResultsDir.Replace('\', '/')
 
 function Test-SimulatorErrors([string]$LogText) {
     # SVA $error is independent of the UVM report server.
@@ -37,7 +40,10 @@ try {
         'axi_lite_wstrb_test',
         'axi_lite_error_test',
         'axi_lite_backpressure_test',
-        'axi_lite_learning_test'
+        'axi_lite_learning_test',
+        'axi_lite_slave_backpressure_test',
+        'axi_lite_concurrent_test',
+        'axi_lite_continuous_test'
     )
 
     $rows = [System.Collections.Generic.List[object]]::new()
@@ -47,7 +53,7 @@ try {
             $runIndex++
             $seed = 1000 + $runIndex
             $stem = "${test}_seed_${seed}"
-            $ucdb = "results/${stem}.ucdb"
+            $ucdb = (Join-Path $ResultsDir "${stem}.ucdb").Replace('\', '/')
             $log = Join-Path $LogsDir "${stem}.log"
             # A stopped/timed-out run must not reuse a database from a prior run.
             if (Test-Path -LiteralPath $ucdb) { Remove-Item -LiteralPath $ucdb }
@@ -75,11 +81,15 @@ try {
                 'axi_lite_error_test'        { 20 }
                 'axi_lite_backpressure_test' { $RandomTransactions }
                 'axi_lite_learning_test'     { 29 }
+                'axi_lite_slave_backpressure_test' { 4 }
+                'axi_lite_concurrent_test' { 15 }
+                'axi_lite_continuous_test' { 51 }
             }
 
             $passed = ($simExitCode -eq 0 -and $uvmError -eq '0' -and $uvmFatal -eq '0' -and
                 -not (Test-SimulatorErrors $text) -and $functional -ne '' -and
                 $text.Contains('[TEST_DONE]') -and $observedCount -ne '' -and
+                ($test -notin @('axi_lite_slave_backpressure_test','axi_lite_concurrent_test','axi_lite_continuous_test') -or $text.Contains('[SCENARIO_DONE]')) -and
                 [int]$observedCount -eq $transactionCount -and (Test-Path -LiteralPath $ucdb))
 
             $rows.Add([pscustomobject]@{
@@ -89,10 +99,12 @@ try {
                 Transactions = $observedCount
                 ExpectedTransactions = $transactionCount
                 FunctionalCoveragePercent = $functional
+                TimingCoveragePercent = [regex]::Match($text, 'AXI-Lite timing coverage:\s*([0-9.]+)%').Groups[1].Value
                 UvmErrors = $uvmError
                 UvmFatals = $uvmFatal
                 Result = if ($passed) { 'PASS' } else { 'FAIL' }
             })
+            $rows | Export-Csv -NoTypeInformation -Encoding utf8 (Join-Path $ResultsDir 'regression_results.csv')
 
             if (-not $passed) {
                 throw "Regression failed: $test seed $seed. See $log"
@@ -140,6 +152,15 @@ try {
         throw 'Final UVM + directed coverage report failed.'
     }
 
+    $coverageText = Get-Content -Raw -LiteralPath (Join-Path $ResultsDir 'final_merged_coverage.txt')
+    foreach ($cover in @('c_aw_wait_then_accept','c_w_wait_then_accept','c_ar_wait_then_accept')) {
+        $pattern = '(?m)^/top_tb/axi_assert_i/' + $cover + '\s*\r?\n[^\r\n]*\r?\n\s+([0-9]+)\s+Covered'
+        $hit = [regex]::Match($coverageText, $pattern)
+        if (-not $hit.Success -or [int]$hit.Groups[1].Value -le 0) {
+            throw "Missing non-vacuous request recovery coverage: $cover"
+        }
+    }
+
     $passCount = ($rows | Where-Object Result -eq 'PASS').Count
     $totalRuns = $rows.Count + 1
     $totalPass = $passCount + 1
@@ -147,5 +168,6 @@ try {
 }
 finally {
     $env:AXI_SIM_TIMEOUT_US = $PreviousTimeout
+    $env:AXI_RESULTS_DIR = $PreviousResults
     Pop-Location
 }

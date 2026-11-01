@@ -1,5 +1,7 @@
 transcript on
-file mkdir results
+set results_dir "results"
+if {[info exists ::env(AXI_RESULTS_DIR)]} {set results_dir $::env(AXI_RESULTS_DIR)}
+file mkdir $results_dir
 
 if {[file exists work_directed]} {
     vdel -lib work_directed -all
@@ -19,6 +21,6 @@ if {[info exists ::env(AXI_SIM_TIMEOUT_US)]} {
     set timeout_us $::env(AXI_SIM_TIMEOUT_US)
 }
 run $timeout_us us
-coverage save "results/directed_smoke.ucdb"
-coverage report -details -file "results/directed_smoke_coverage.txt"
+coverage save "$results_dir/directed_smoke.ucdb"
+coverage report -details -file "$results_dir/directed_smoke_coverage.txt"
 quit -f

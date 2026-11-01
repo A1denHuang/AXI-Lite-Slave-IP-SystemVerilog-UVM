@@ -9,6 +9,10 @@ class axi_lite_item extends uvm_sequence_item;
 
     bit [AXI_DATA_WIDTH-1:0] rdata;
     bit [1:0]                resp;
+    // Request fences drain the driver without producing a bus transaction.
+    bit barrier;
+    typedef enum {COMPLETED, READ_ACCEPTED, WRITE_COMMITTED} event_e;
+    event_e observed_event = COMPLETED;
 
     // Optional deterministic timing controls used by learning/directed
     // sequences.  Normal randomized tests leave use_explicit_delays clear,
@@ -45,6 +49,8 @@ class axi_lite_item extends uvm_sequence_item;
         `uvm_field_int(wstrb, UVM_HEX)
         `uvm_field_int(rdata, UVM_HEX)
         `uvm_field_int(resp,  UVM_BIN)
+        `uvm_field_int(barrier, UVM_DEFAULT)
+        `uvm_field_enum(event_e, observed_event, UVM_DEFAULT)
         `uvm_field_int(use_explicit_delays, UVM_DEFAULT)
         `uvm_field_int(aw_delay, UVM_DEC)
         `uvm_field_int(w_delay, UVM_DEC)

@@ -18,7 +18,11 @@ class axi_lite_base_test extends uvm_test;
     task run_selected_sequence(uvm_phase phase, axi_lite_base_sequence seq);
         phase.raise_objection(this);
         seq.start(env.agent.sequencer);
-        repeat (10) @(posedge env.agent.driver.vif.aclk);
+        env.agent.driver.wait_for_idle();
+        repeat (2) @(env.agent.driver.vif.mon_cb);
+        if (env.agent.driver.submitted != env.scoreboard.checked_transfers)
+            `uvm_error("COUNT", "submitted and checked transfer counts differ")
+        `uvm_info("TEST_DONE", "all requests drained and checked", UVM_LOW)
         phase.drop_objection(this);
     endtask
 endclass
@@ -107,4 +111,36 @@ class axi_lite_learning_test extends axi_lite_base_test;
     endtask
 endclass
 
+
+
+class axi_lite_v11_test extends axi_lite_base_test;
+    `uvm_component_utils(axi_lite_v11_test)
+    int profile=1;
+    function new(string name,uvm_component parent); super.new(name,parent); endfunction
+    function void build_phase(uvm_phase phase);
+        uvm_config_db#(bit)::set(this,"env.agent.driver","pipeline_mode",1);
+        super.build_phase(phase);
+    endfunction
+    task run_phase(uvm_phase phase);
+        axi_lite_v11_sequence seq=axi_lite_v11_sequence::type_id::create("seq");
+        seq.profile=profile;
+        run_selected_sequence(phase,seq);
+    endtask
+    function void check_phase(uvm_phase phase);
+        super.check_phase(phase);
+        env.agent.monitor.require_scenarios(profile);
+    endfunction
+endclass
+class axi_lite_slave_backpressure_test extends axi_lite_v11_test;
+    `uvm_component_utils(axi_lite_slave_backpressure_test)
+    function new(string name,uvm_component parent); super.new(name,parent); profile=1; endfunction
+endclass
+class axi_lite_concurrent_test extends axi_lite_v11_test;
+    `uvm_component_utils(axi_lite_concurrent_test)
+    function new(string name,uvm_component parent); super.new(name,parent); profile=2; endfunction
+endclass
+class axi_lite_continuous_test extends axi_lite_v11_test;
+    `uvm_component_utils(axi_lite_continuous_test)
+    function new(string name,uvm_component parent); super.new(name,parent); profile=3; endfunction
+endclass
 `endif

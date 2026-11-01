@@ -102,6 +102,16 @@ module axi_lite_slave_assertions #(
     default clocking cb @(posedge aclk);
     endclocking
 
+    c_aw_wait_then_accept: cover property (disable iff (!aresetn)
+        (s_axi_awvalid && !s_axi_awready) ##1
+        (s_axi_awvalid && !s_axi_awready)[*0:32] ##1 (s_axi_awvalid && s_axi_awready));
+    c_w_wait_then_accept: cover property (disable iff (!aresetn)
+        (s_axi_wvalid && !s_axi_wready) ##1
+        (s_axi_wvalid && !s_axi_wready)[*0:32] ##1 (s_axi_wvalid && s_axi_wready));
+    c_ar_wait_then_accept: cover property (disable iff (!aresetn)
+        (s_axi_arvalid && !s_axi_arready) ##1
+        (s_axi_arvalid && !s_axi_arready)[*0:32] ##1 (s_axi_arvalid && s_axi_arready));
+
     // -------------------------
     // Global/reset/X checking
     // -------------------------

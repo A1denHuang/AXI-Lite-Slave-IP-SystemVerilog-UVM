@@ -223,4 +223,59 @@ class axi_lite_learning_sequence extends axi_lite_base_sequence;
     endtask
 endclass
 
+
+
+// v1.1 fences complete locally; they never drive an AXI transaction.
+class axi_lite_v11_sequence extends axi_lite_base_sequence;
+    `uvm_object_utils(axi_lite_v11_sequence)
+    int profile=1;
+    function new(string name="axi_lite_v11_sequence"); super.new(name); endfunction
+    task fence();
+        axi_lite_item tr=axi_lite_item::type_id::create("fence");
+        start_item(tr); tr.barrier=1; finish_item(tr);
+    endtask
+    task body();
+        case(profile)
+        1: begin
+            send_write_timed(0,32'h12345678,15,0,0,12);
+            send_write_timed(4,32'habcdef01,15,0,0,0);
+            fence();
+            send_read_timed(0,0,12); send_read_timed(4,0,0); fence();
+        end
+        2: begin
+            // All requests in each group launch from an idle fence boundary.
+            // Same-edge read must see the old value, later read the new value.
+            send_write_timed(0,32'h11223344,15,0,0,0);
+            send_read_timed(0,0,0); fence(); send_read_timed(0,0,0); fence();
+            send_write_timed(4,32'habcd5678,3,0,0,0);
+            send_read_timed(8,0,0); fence();
+            // Read progresses while B is blocked.
+            send_write_timed(0,32'h55667788,12,0,0,12);
+            send_read_timed(0,3,0); fence();
+            // Write progresses while a prior R snapshot is blocked.
+            send_read_timed(0,0,12);
+            send_write_timed(0,32'hdeadbeef,5,3,3,0); fence();
+            // Rejected write cannot corrupt a legal register during concurrent read.
+            send_write_timed(1,32'hffffffff,15,0,0,0);
+            send_read_timed(0,0,0); fence();
+            for(int i=0;i<4;i++) send_read_timed(i*4,0,0);
+            fence();
+        end
+        3: begin
+            send_write_timed(0,32'h01020304,15,0,3,0); fence();
+            send_write_timed(4,32'h05060708,15,3,0,0); fence();
+            send_write_timed(8,32'h090a0b0c,15,0,0,0); fence();
+            for(int i=0;i<12;i++) send_write_timed((i%4)*4,$urandom, i%16,0,0,0);
+            fence();
+            for(int i=0;i<12;i++) send_read_timed((i%4)*4,0,0);
+            fence();
+            for(int i=0;i<12;i++) begin
+                send_write_timed((i%4)*4,$urandom,15,0,0,0);
+                send_read_timed(((i+1)%4)*4,0,0);
+            end
+            fence();
+        end
+        endcase
+    endtask
+endclass
 `endif

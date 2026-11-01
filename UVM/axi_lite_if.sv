@@ -28,6 +28,7 @@ interface axi_lite_if #(
     logic                    rready;
 
     clocking drv_cb @(posedge aclk);
+        default input #1step output #0;
         output awaddr, awvalid, wdata, wstrb, wvalid, bready;
         output araddr, arvalid, rready;
         input  awready, wready, bresp, bvalid;
@@ -35,6 +36,7 @@ interface axi_lite_if #(
     endclocking
 
     clocking mon_cb @(posedge aclk);
+        default input #1step;
         input awaddr, awvalid, awready;
         input wdata, wstrb, wvalid, wready;
         input bresp, bvalid, bready;

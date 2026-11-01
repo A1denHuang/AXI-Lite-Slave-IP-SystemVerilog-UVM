@@ -1,6 +1,6 @@
 # AXI4-Lite Slave Register Verification
 
-Release **v1.0**. SystemVerilog/UVM verification of an AXI4-Lite register slave.
+Release **v1.1**. SystemVerilog/UVM verification of an AXI4-Lite register slave.
 
 ## Design
 
@@ -27,6 +27,19 @@ powershell -NoProfile -ExecutionPolicy Bypass -File sim/run_regression.ps1 -Seed
 ```
 
 Generated logs and coverage databases are written to `results/` and are excluded from source control.
+
+## Protocol scenarios
+
+The UVM tests exercise master response backpressure, slave request backpressure,
+AW-first/W-first/simultaneous arrival, concurrent reads and writes, and continuous requests.
+Continuous requests remain subject to the slave's READY behavior; they do not imply one accepted request every cycle.
+Same-cycle reads and writes to one address return the pre-write value.
+
+The transaction model contains 94 bins; the timing model contains 24 bins. The measured regression reaches all bins in both models.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File sim/check_request_fault.ps1
+```
 
 ## Versions
 

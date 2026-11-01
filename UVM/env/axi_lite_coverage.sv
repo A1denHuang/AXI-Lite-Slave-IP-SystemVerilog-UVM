@@ -67,6 +67,7 @@ class axi_lite_coverage extends uvm_component;
     endfunction
 
     function void write(axi_lite_item tr);
+        if (tr.observed_event != axi_lite_item::COMPLETED) return;
         cov_cmd       = tr.cmd;
         cov_addr      = tr.addr;
         cov_addr_kind = tr.addr_kind();
