@@ -14,7 +14,7 @@ Generic register file behind an AXI4-Lite slave port.
 | --- | --- | --- |
 | `DATA_WIDTH` | 32 | Register / data bus width |
 | `ADDR_WIDTH` | 8 | Byte address width |
-| `REG_COUNT` | 8 | Number of registers |
+| `REG_COUNT` | 4 | Number of registers |
 
 Behavior:
 
