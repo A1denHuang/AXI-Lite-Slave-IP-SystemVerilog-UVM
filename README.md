@@ -1,147 +1,66 @@
-# AXI4-Lite Slave Register IP + UVM Verification
+# AXI4-Lite Slave Register IP and Verification
 
-A parameterized AXI4-Lite slave register block in Verilog, with a UVM
-testbench, interface-level SVA checkers, and a seed-swept coverage regression
-run on QuestaSim 10.7c.
+A parameterized AXI4-Lite register slave with SystemVerilog/UVM verification, interface-level assertions and a standalone project-register testbench.
 
-## RTL
+**Latest release: [v1.2](https://github.com/A1denHuang/AXI-Lite-Slave-IP-SystemVerilog-UVM/tree/v1.2)** · **[Latest source and documentation](https://github.com/A1denHuang/AXI-Lite-Slave-IP-SystemVerilog-UVM/tree/version1.2)**
 
-### `rtl/axi_lite_slave_regs.v` (verified DUT)
+This `main` branch retains the earlier source baseline. The features and results below are identified by release; check out `version1.2` to run the latest tests.
 
-Generic register file behind an AXI4-Lite slave port.
+## Versions
 
-| Parameter | Default | Meaning |
+| Version | Changes | Measured verification |
 | --- | --- | --- |
-| `DATA_WIDTH` | 32 | Register / data bus width |
-| `ADDR_WIDTH` | 8 | Byte address width |
-| `REG_COUNT` | 4 | Number of registers |
+| [v1.0](https://github.com/A1denHuang/AXI-Lite-Slave-IP-SystemVerilog-UVM/tree/v1.0) | Serial UVM baseline, register mirror, transaction coverage and AXI assertions | 61/61 runs; 10,993 transfers |
+| [v1.1](https://github.com/A1denHuang/AXI-Lite-Slave-IP-SystemVerilog-UVM/tree/v1.1) | Slave request backpressure, concurrent reads/writes, continuous requests and timing coverage | 91/91 runs; 11,693 transfers; 94/94 transaction bins; 24/24 timing bins |
+| [v1.2](https://github.com/A1denHuang/AXI-Lite-Slave-IP-SystemVerilog-UVM/tree/v1.2) | Standalone project-register tests and hardware-set-priority RW1C | 10 directed scenarios; 251 transfers; 458 comparisons |
 
-Behavior:
+The v1.2 project-register test is separate from the 91-run generic-DUT regression. Version tags preserve the release snapshots.
 
-- AW and W may arrive in either order or in the same cycle. Each channel has a
-  one-entry hold register; the write executes once both are present and no
-  write response is pending.
-- One outstanding write and one outstanding read at a time (`AWREADY`/`WREADY`
-  drop while a beat is held or `BVALID` is high, `ARREADY` drops while `RVALID`
-  is high).
-- `WSTRB` byte enables are honored.
-- Unaligned or out-of-range addresses return `SLVERR`. Writes to them change
-  nothing; reads return all zeros.
-- Synchronous active-low reset clears all registers.
-- All registers are also exported on `regs_flat` for the surrounding logic.
+## Design and verification
 
-### `rtl/axi_lite_slave_project_regs.v` (example, not verified)
+The generic DUT supports independent AW/W arrival, WSTRB byte enables and SLVERR for misaligned or unmapped addresses. The verified configuration uses 32-bit data, 8-bit addresses and four registers. It accepts at most one outstanding transaction per direction; reads and writes can progress independently.
 
-A fixed register map showing how the generic block can be specialized:
+v1.1 adds five independent driver tasks, cycle-based monitoring and request-time reference-model updates. Tests cover both directions of backpressure, AW-first/W-first/simultaneous writes, concurrent accesses and continuous requests. Continuous requests remain subject to READY; they do not imply one accepted request per cycle.
 
-| Offset | Name | Access | Description |
-| --- | --- | --- | --- |
-| 0x00 | CTRL | RW | Control |
-| 0x04 | STATUS | RO | Reflects `status_i` |
-| 0x08 | INTR_EN | RW | Interrupt enable |
-| 0x0C | INTR_STATUS | RW1C | Set by `intr_status_set_i`, cleared by writing 1 |
-| 0x10 | VERSION | RO | `VERSION_VALUE` parameter |
+v1.2 adds a separate testbench for CTRL, STATUS, INTR_EN, INTR_STATUS and VERSION. It checks RW/RO/RW1C behavior, all 16 WSTRB masks, hardware/software collisions, invalid addresses and blocked read responses. Hardware set wins a simultaneous software clear in INTR_STATUS.
 
-## Verification
+Source: [generic RTL](https://github.com/A1denHuang/AXI-Lite-Slave-IP-SystemVerilog-UVM/blob/version1.2/rtl/axi_lite_slave_regs.v), [UVM environment](https://github.com/A1denHuang/AXI-Lite-Slave-IP-SystemVerilog-UVM/tree/version1.2/UVM), [project-register testbench](https://github.com/A1denHuang/AXI-Lite-Slave-IP-SystemVerilog-UVM/blob/version1.2/sim/tb_axi_lite_slave_project_regs.sv).
 
-```
-UVM/
-  axi_lite_if.sv, axi_lite_pkg.sv
-  axi_lite_agent/   item, sequencer, driver, monitor, agent
-  env/              env, scoreboard (register mirror), coverage
-  tests/            sequences and tests
-  assertions.sv     SVA checker module
-  top_tb_uvm.sv     UVM top
-sim/
-  tb_axi_lite_slave_regs.v   standalone directed bench
-  *.do, run_regression.ps1   Questa scripts
-results/                     archived regression output
+## Run the latest version
+
+```sh
+git clone --branch version1.2 https://github.com/A1denHuang/AXI-Lite-Slave-IP-SystemVerilog-UVM.git
+cd AXI-Lite-Slave-IP-SystemVerilog-UVM
 ```
 
-- **Driver** inserts random `BREADY`/`RREADY` delays (up to `max_ready_delay`).
-- **Scoreboard** keeps a mirror of the registers, applies `WSTRB` on writes,
-  and checks read data and the expected `OKAY`/`SLVERR` response.
-- **Coverage** (`axi_lite_cg`): command, address (each register, unaligned,
-  out of range), response, `WSTRB` pattern, and crosses of
-  command x address kind x response and address kind x `WSTRB`.
-- **Assertions** (`UVM/assertions.sv`) watch only the AXI ports: signal
-  stability while `VALID` is waiting for `READY`, no response without a
-  request, legal response codes, response latency bound, and `SLVERR` on
-  invalid addresses. They are instantiated in both the directed and UVM tops.
-  `UVM/assertions_protocol说明.md` explains each property (in Chinese).
+The scripts use QuestaSim 10.7c and UVM 1.2. Set the simulator installation path in the scripts to match your environment. Run the following commands from the project root.
 
-| Test | Focus |
-| --- | --- |
-| `axi_lite_smoke_test` | Basic write/read to each register |
-| `axi_lite_random_test` | Constrained-random mix of reads and writes |
-| `axi_lite_wstrb_test` | All 16 byte enables plus directed out-of-range cross closure |
-| `axi_lite_error_test` | Unaligned and out-of-range accesses |
-| `axi_lite_backpressure_test` | Random traffic with longer `BREADY`/`RREADY` stalls |
+```powershell
+# Generic-DUT UVM regression and directed bench
+powershell -NoProfile -ExecutionPolicy Bypass -File sim/run_regression.ps1 -SeedsPerTest 10 -RandomTransactions 500
+
+# Project-register directed test
+powershell -NoProfile -ExecutionPolicy Bypass -File sim/check_project_regs.ps1
+```
+
+The generic regression defaults to `results/v1.1/`; the project-register test writes to `results/project-regs/`. These generated logs and coverage databases are excluded from source control.
+
+## Fault-detection checks
+
+Two separate checks deliberately introduce incorrect behavior:
+
+```powershell
+# Change AW/W/AR payloads while requests are stalled
+powershell -NoProfile -ExecutionPolicy Bypass -File sim/check_request_fault.ps1
+
+# Restore software-clear-priority RW1C in an isolated generated copy
+powershell -NoProfile -ExecutionPolicy Bypass -File sim/check_project_priority_mutation.ps1
+```
+
+The first wrapper requires one expected stability assertion failure on each request channel and reports `EXPECTED_FAILURE_VERIFIED assertions=3`. The second requires the same-bit RW1C collision check to reject the modified copy and reports `PRIORITY_MUTATION_REJECTED`. The real RTL is not modified by either check. Expected failures are excluded from normal regression pass counts.
 
 ## Results
 
-Regression on 2026-10-31: 5 UVM tests x 10 seeds (1001-1050) plus the directed
-bench, 51/51 passing, 6,703 transfers checked, no UVM errors and no assertion
-failures.
+Measurements were taken on 2026-11-01 with QuestaSim 10.7c. The v1.1 regression comprises nine UVM tests with ten seeds each plus one standalone directed bench: 11,680 UVM transfers and 13 directed transfers, with no UVM errors or normal-run assertion failures.
 
-| Metric | Result |
-| --- | ---: |
-| Functional coverage (merged `axi_lite_cg`) | 100.00% |
-| Statement | 92.72% |
-| Branch | 100% |
-| Condition | 100% |
-| Expression | 100% |
-| Toggle | 69.30% |
-
-Code coverage is for `rtl/axi_lite_slave_regs.v` only. Per-test numbers, the
-seed matrix and logs are in `results/VERIFICATION_RESULTS.md` and
-`results/logs/`.
-
-The functional-coverage closure is deliberate rather than a longer random run:
-
-- `c_wstrb` generates all 16 `WSTRB` values.
-- `axi_lite_wstrb_sequence` enumerates all 16 values at a legal address and
-  explicitly drives `0`, `8`, `9`, and `A` at out-of-range address `0x20` to
-  close the four previously missing reachable cross bins.
-- Protocol-violating response combinations, such as an invalid address with an
-  `OKAY` response, are `illegal_bins`. They are excluded from the coverage goal
-  and report an error if ever sampled.
-
-An individual random seed can still report less than 100% because a finite
-sample may miss reachable cross combinations. The 100.00% result above is the
-merged 50-seed regression result with the directed WSTRB closure sequence. It
-does not mean the verification plan is exhaustive, and it is separate from RTL
-statement/branch/condition/expression/toggle code coverage.
-
-## Running
-
-Paths assume QuestaSim installed under `D:\Questasim`; adjust as needed.
-
-```sh
-# one UVM test (default test set in run_uvm.do)
-vsim -do sim/run_uvm.do
-
-# pick a test and transaction count
-vsim -c -coverage top_tb +UVM_TESTNAME=axi_lite_random_test +NUM_TXNS=1000 -do "run -all; quit -f"
-
-# directed bench
-vsim -do sim/run_directed.do
-```
-
-Full regression with coverage merge (PowerShell):
-
-```powershell
-pwsh -File sim/run_regression.ps1 -SeedsPerTest 10 -RandomTransactions 500
-```
-
-Intel FPGA ModelSim ASE can compile the environment but cannot run the
-randomization and covergroups; a full QuestaSim license is needed.
-
-## Known gaps
-
-- The current `axi_lite_cg` reaches 100%, but it covers the implemented plan,
-  not every possible AXI4-Lite behavior. Reset during traffic, multiple
-  parameter configurations, and broader timing crosses are not covered.
-- Toggle coverage is low because random data does not drive both edges on every
-  register bit.
-- `axi_lite_slave_project_regs.v` has no testbench yet.
+Transaction coverage reached 94/94 bins and timing coverage reached 24/24 bins. These percentages describe the implemented coverage models. The v1.2 standalone project-register run completed 137 writes, 114 reads and 458 comparisons without simulator or assertion errors.
