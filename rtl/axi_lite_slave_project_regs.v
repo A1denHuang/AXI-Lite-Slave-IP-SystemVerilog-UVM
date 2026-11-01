@@ -127,8 +127,9 @@ module axi_lite_slave_project_regs #(
                             for (b = 0; b < 4; b = b + 1) begin
                                 if (write_strb[b]) begin
                                     intr_status_reg[b*8 +: 8] <=
-                                        (intr_status_reg[b*8 +: 8] | intr_status_set_i[b*8 +: 8]) &
-                                        ~write_data[b*8 +: 8];
+                                        // A new hardware event wins a simultaneous software clear.
+                                        (intr_status_reg[b*8 +: 8] & ~write_data[b*8 +: 8]) |
+                                        intr_status_set_i[b*8 +: 8];
                                 end
                             end
                         end

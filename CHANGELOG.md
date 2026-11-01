@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.2
+
+- Standalone project-register testbench for RW, RO and RW1C semantics.
+- Hardware set takes priority over a simultaneous software clear.
+- All 16 write-strobe masks, read-response stability and invalid-address checks.
+- Directed test: 10 scenarios, 251 transfers and 458 comparisons.
+- Isolated mutation test rejects software-clear-priority behavior.
+
 ## v1.1
 
 - Independent AW/W/B/AR/R driver tasks with clocking blocks and bounded queues.

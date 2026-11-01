@@ -1,6 +1,6 @@
 # AXI4-Lite Slave Register Verification
 
-Release **v1.1**. SystemVerilog/UVM verification of an AXI4-Lite register slave.
+Release **v1.2**. SystemVerilog/UVM verification of an AXI4-Lite register slave.
 
 ## Design
 
@@ -39,6 +39,25 @@ The transaction model contains 94 bins; the timing model contains 24 bins. The m
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File sim/check_request_fault.ps1
+```
+
+## Project registers
+
+| Offset | Register | Access |
+| --- | --- | --- |
+| `0x00` | CTRL | RW |
+| `0x04` | STATUS | RO, sampled from status_i |
+| `0x08` | INTR_EN | RW |
+| `0x0C` | INTR_STATUS | RW1C with hardware set |
+| `0x10` | VERSION | RO constant |
+
+RO writes are ignored and return OKAY. For INTR_STATUS,
+`next = (old & ~software_clear_mask) | hardware_set`; WSTRB qualifies only the software clear.
+Reset clears writable state. The module exposes enable and status registers, with no separate IRQ output.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File sim/check_project_regs.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File sim/check_project_priority_mutation.ps1
 ```
 
 ## Versions
